@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../features/societa/societa_page.dart';
+import '../features/pescatori/pescatori_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -57,8 +58,15 @@ class DashboardPage extends StatelessWidget {
             context,
             icon: Icons.people,
             titolo: 'Pescatori',
-            onTap: () {},
-          ),
+onTap: () {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const PescatoriPage(),
+    ),
+  );
+},    
+ ),
 
           _menuCard(
             context,
