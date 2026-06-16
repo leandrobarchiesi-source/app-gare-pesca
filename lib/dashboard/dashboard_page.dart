@@ -3,6 +3,7 @@ import '../auth/auth_service.dart';
 import '../features/societa/societa_page.dart';
 import '../features/pescatori/pescatori_page.dart';
 import '../features/trofei/trofei_page.dart';
+import '../features/gare/gare_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -74,7 +75,14 @@ class DashboardPage extends StatelessWidget {
             context,
             icon: Icons.phishing,
             titolo: 'Gare',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const GarePage(),
+                ),
+              );
+            },
           ),
         ],
       ),

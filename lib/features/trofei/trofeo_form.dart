@@ -18,6 +18,19 @@ class _TrofeoFormState extends State<TrofeoForm> {
 
   final nomeCtrl = TextEditingController();
   final descrizioneCtrl = TextEditingController();
+  final numZoneCtrl = TextEditingController();
+  final componentiCtrl = TextEditingController();
+  final numProveCtrl = TextEditingController();
+
+  String modalitaGara = 'Singola';
+
+  final modalitaDisponibili = [
+    'Singola',
+    'Coppie Separate',
+    'Coppie a Box',
+    'Squadre Separate',
+    'Squadre a Box',
+  ];
 
   DateTime? dataInizio;
   DateTime? dataFine;
@@ -29,25 +42,115 @@ class _TrofeoFormState extends State<TrofeoForm> {
     super.initState();
 
     if (widget.trofeo != null) {
-      nomeCtrl.text = widget.trofeo!['nome'] ?? '';
+      final t = widget.trofeo!;
 
-      descrizioneCtrl.text = widget.trofeo!['descrizione'] ?? '';
+      nomeCtrl.text = t['nome'] ?? '';
+      descrizioneCtrl.text = t['descrizione'] ?? '';
 
-      if (widget.trofeo!['data_inizio'] != null) {
-        dataInizio = DateTime.parse(
-          widget.trofeo!['data_inizio'],
-        );
+      modalitaGara = (t['modalita_gara'] ?? '').toString().isEmpty
+          ? 'Singola'
+          : t['modalita_gara'];
+
+      numZoneCtrl.text = t['num_zone']?.toString() ?? '';
+
+      componentiCtrl.text = t['componenti_squadra']?.toString() ?? '';
+
+      numProveCtrl.text = t['num_prove']?.toString() ?? '';
+
+      if (t['data_inizio'] != null) {
+        dataInizio = DateTime.parse(t['data_inizio']);
       }
 
-      if (widget.trofeo!['data_fine'] != null) {
-        dataFine = DateTime.parse(
-          widget.trofeo!['data_fine'],
-        );
+      if (t['data_fine'] != null) {
+        dataFine = DateTime.parse(t['data_fine']);
       }
     }
   }
 
   Future<void> salva() async {
+    final zone = int.tryParse(numZoneCtrl.text) ?? 0;
+
+    final numProve = int.tryParse(numProveCtrl.text) ?? 0;
+
+    if (zone < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Numero zone non valido',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (numProve < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Numero prove non valido',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (modalitaGara == 'Coppie Separate' && zone < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Coppie Separate richiede almeno 2 zone',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (modalitaGara == 'Squadre Separate' && zone < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Squadre Separate richiede almeno 2 zone',
+          ),
+        ),
+      );
+      return;
+    }
+
+    int componenti;
+
+    switch (modalitaGara) {
+      case 'Singola':
+        componenti = 1;
+        break;
+
+      case 'Coppie Separate':
+      case 'Coppie a Box':
+        componenti = 2;
+        break;
+
+      case 'Squadre Separate':
+        componenti = zone;
+        break;
+
+      case 'Squadre a Box':
+        componenti = int.tryParse(componentiCtrl.text) ?? 0;
+
+        if (componenti < 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Inserire i componenti squadra',
+              ),
+            ),
+          );
+          return;
+        }
+        break;
+
+      default:
+        componenti = 1;
+    }
+
     setState(() => loading = true);
 
     try {
@@ -56,6 +159,10 @@ class _TrofeoFormState extends State<TrofeoForm> {
         'descrizione': descrizioneCtrl.text.trim(),
         'data_inizio': dataInizio?.toIso8601String(),
         'data_fine': dataFine?.toIso8601String(),
+        'modalita_gara': modalitaGara,
+        'num_zone': zone,
+        'componenti_squadra': componenti,
+        'num_prove': numProve,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -135,10 +242,82 @@ class _TrofeoFormState extends State<TrofeoForm> {
             ),
           ),
           const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: modalitaGara,
+            decoration: const InputDecoration(
+              labelText: 'Modalità Gara',
+            ),
+            items: modalitaDisponibili.map((m) {
+              return DropdownMenuItem(
+                value: m,
+                child: Text(m),
+              );
+            }).toList(),
+            onChanged: (v) {
+              if (v == null) return;
+
+              setState(() {
+                modalitaGara = v;
+
+                switch (v) {
+                  case 'Singola':
+                    componentiCtrl.text = '1';
+                    break;
+
+                  case 'Coppie Separate':
+                  case 'Coppie a Box':
+                    componentiCtrl.text = '2';
+                    break;
+
+                  case 'Squadre Separate':
+                    componentiCtrl.text = numZoneCtrl.text;
+                    break;
+
+                  case 'Squadre a Box':
+                    componentiCtrl.text = '';
+                    break;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: numZoneCtrl,
+            onChanged: (value) {
+              if (modalitaGara == 'Squadre Separate') {
+                setState(() {
+                  componentiCtrl.text = value;
+                });
+              }
+            },
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Numero Zone',
+            ),
+          ),
+          if (modalitaGara == 'Squadre a Box') ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: componentiCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Componenti Squadra',
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: numProveCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Numero Prove',
+            ),
+          ),
+          const SizedBox(height: 12),
           ListTile(
             title: Text(
               dataInizio == null
-                  ? 'Data inizio'
+                  ? 'Data Inizio'
                   : dataInizio!.toString().substring(0, 10),
             ),
             trailing: const Icon(Icons.calendar_month),
@@ -147,13 +326,13 @@ class _TrofeoFormState extends State<TrofeoForm> {
           ListTile(
             title: Text(
               dataFine == null
-                  ? 'Data fine'
+                  ? 'Data Fine'
                   : dataFine!.toString().substring(0, 10),
             ),
             trailing: const Icon(Icons.calendar_month),
             onTap: scegliDataFine,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           ElevatedButton(
             onPressed: loading ? null : salva,
             child: const Text('Salva'),
