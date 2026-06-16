@@ -23,6 +23,7 @@ class _TrofeoFormState extends State<TrofeoForm> {
   final numProveCtrl = TextEditingController();
 
   String modalitaGara = 'Singola';
+  String tipoComposizione = 'Libera';
 
   final modalitaDisponibili = [
     'Singola',
@@ -50,6 +51,10 @@ class _TrofeoFormState extends State<TrofeoForm> {
       modalitaGara = (t['modalita_gara'] ?? '').toString().isEmpty
           ? 'Singola'
           : t['modalita_gara'];
+
+      tipoComposizione = (t['tipo_composizione'] ?? '').toString().isEmpty
+          ? 'Libera'
+          : t['tipo_composizione'];
 
       numZoneCtrl.text = t['num_zone']?.toString() ?? '';
 
@@ -160,6 +165,7 @@ class _TrofeoFormState extends State<TrofeoForm> {
         'data_inizio': dataInizio?.toIso8601String(),
         'data_fine': dataFine?.toIso8601String(),
         'modalita_gara': modalitaGara,
+        'tipo_composizione': tipoComposizione,
         'num_zone': zone,
         'componenti_squadra': componenti,
         'num_prove': numProve,
@@ -280,6 +286,32 @@ class _TrofeoFormState extends State<TrofeoForm> {
               });
             },
           ),
+          if (modalitaGara != 'Singola') ...[
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              value: tipoComposizione,
+              decoration: const InputDecoration(
+                labelText: 'Composizione',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Libera',
+                  child: Text('Libera'),
+                ),
+                DropdownMenuItem(
+                  value: 'Di Società',
+                  child: Text('Di Società'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
+
+                setState(() {
+                  tipoComposizione = v;
+                });
+              },
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: numZoneCtrl,

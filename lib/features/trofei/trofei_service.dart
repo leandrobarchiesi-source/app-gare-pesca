@@ -33,6 +33,7 @@ class TrofeiService {
       'modalita_gara': values['modalita_gara'],
       'num_zone': values['num_zone'],
       'componenti_squadra': values['componenti_squadra'],
+      'tipo_composizione': values['tipo_composizione'],
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('trofeo_id', id);
   }
@@ -40,17 +41,28 @@ class TrofeiService {
   Future<void> deleteTrofeo(
     String id,
   ) async {
-    // Elimina logicamente il trofeo
+    final gare = await _supabase
+        .from('gare')
+        .select('id')
+        .eq('trofeo_id', id)
+        .eq('deleted', false);
 
-    await _supabase.from('trofei').update({
-      'deleted': true,
-    }).eq('id', id);
+    for (final gara in gare) {
+      await _supabase.from('iscrizioni').update({
+        'deleted': true,
+      }).eq('gara_id', gara['id']);
 
-    // Elimina logicamente
-    // tutte le gare associate
+      await _supabase.from('gruppi').update({
+        'deleted': true,
+      }).eq('gara_id', gara['id']);
+    }
 
     await _supabase.from('gare').update({
       'deleted': true,
     }).eq('trofeo_id', id);
+
+    await _supabase.from('trofei').update({
+      'deleted': true,
+    }).eq('id', id);
   }
 }

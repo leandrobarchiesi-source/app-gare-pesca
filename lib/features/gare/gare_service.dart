@@ -55,6 +55,14 @@ class GareService {
   Future<void> deleteGara(
     String id,
   ) async {
+    await _supabase.from('iscrizioni').update({
+      'deleted': true,
+    }).eq('gara_id', id);
+
+    await _supabase.from('gruppi').update({
+      'deleted': true,
+    }).eq('gara_id', id);
+
     await _supabase.from('gare').update({
       'deleted': true,
     }).eq('id', id);

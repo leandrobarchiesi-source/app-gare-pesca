@@ -4,6 +4,7 @@ import '../features/societa/societa_page.dart';
 import '../features/pescatori/pescatori_page.dart';
 import '../features/trofei/trofei_page.dart';
 import '../features/gare/gare_page.dart';
+import '../features/iscrizioni/iscrizioni_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -80,6 +81,19 @@ class DashboardPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const GarePage(),
+                ),
+              );
+            },
+          ),
+          _menuCard(
+            context,
+            icon: Icons.how_to_reg,
+            titolo: 'Iscrizioni',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const IscrizioniPage(),
                 ),
               );
             },

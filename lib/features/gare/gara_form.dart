@@ -29,6 +29,7 @@ class _GaraFormState extends State<GaraForm> {
   String? societaId;
 
   String modalitaGara = 'Singola';
+  String tipoComposizione = 'Libera';
 
   final modalitaDisponibili = [
     'Singola',
@@ -65,6 +66,9 @@ class _GaraFormState extends State<GaraForm> {
       modalitaGara = mg == null || mg.toString().trim().isEmpty
           ? 'Singola'
           : mg.toString();
+      tipoComposizione = (g['tipo_composizione'] ?? '').toString().isEmpty
+          ? 'Libera'
+          : g['tipo_composizione'];
       componentiCtrl.text = g['componenti_squadra']?.toString() ?? '';
       if (componentiCtrl.text.isEmpty) {
         switch (modalitaGara) {
@@ -186,6 +190,7 @@ class _GaraFormState extends State<GaraForm> {
         'data_gara': dataGara?.toIso8601String(),
         'modalita': modalitaGara,
         'modalita_gara': modalitaGara,
+        'tipo_composizione': tipoComposizione,
         'num_zone': zone,
         'componenti_squadra': componenti,
         'updated_at': DateTime.now().toIso8601String(),
@@ -267,6 +272,8 @@ class _GaraFormState extends State<GaraForm> {
 
                   componentiCtrl.text =
                       (trofeo['componenti_squadra'] ?? '').toString();
+                  tipoComposizione =
+                      (trofeo['tipo_composizione'] ?? 'Libera').toString();
                 }
               });
             },
@@ -305,6 +312,10 @@ class _GaraFormState extends State<GaraForm> {
             ListTile(
               title: const Text('Modalità Gara'),
               subtitle: Text(modalitaGara),
+            ),
+            ListTile(
+              title: const Text('Composizione'),
+              subtitle: Text(tipoComposizione),
             ),
             ListTile(
               title: const Text('Numero Zone'),
@@ -373,6 +384,30 @@ class _GaraFormState extends State<GaraForm> {
                       componentiCtrl.text = '';
                       break;
                   }
+                });
+              },
+            ),
+          if (trofeoId == null && modalitaGara != 'Singola')
+            DropdownButtonFormField<String>(
+              value: tipoComposizione,
+              decoration: const InputDecoration(
+                labelText: 'Composizione',
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Libera',
+                  child: Text('Libera'),
+                ),
+                DropdownMenuItem(
+                  value: 'Di Società',
+                  child: Text('Di Società'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
+
+                setState(() {
+                  tipoComposizione = v;
                 });
               },
             ),
