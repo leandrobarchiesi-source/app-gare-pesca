@@ -2,24 +2,22 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../features/societa/societa_page.dart';
 import '../features/pescatori/pescatori_page.dart';
+import '../features/trofei/trofei_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     final user = AuthService().currentUser;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Gestione Gare Pesca'),
         actions: [
-
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-
               await AuthService().signOut();
 
               if (!context.mounted) return;
@@ -27,19 +25,12 @@ class DashboardPage extends StatelessWidget {
               Navigator.pop(context);
             },
           )
-
         ],
       ),
-
       body: GridView.count(
         padding: const EdgeInsets.all(16),
-        crossAxisCount:
-            MediaQuery.of(context).size.width > 800
-                ? 4
-                : 2,
-
+        crossAxisCount: MediaQuery.of(context).size.width > 800 ? 4 : 2,
         children: [
-
           _menuCard(
             context,
             icon: Icons.business,
@@ -53,38 +44,40 @@ class DashboardPage extends StatelessWidget {
               );
             },
           ),
-
           _menuCard(
             context,
             icon: Icons.people,
             titolo: 'Pescatori',
-onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => const PescatoriPage(),
-    ),
-  );
-},    
- ),
-
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const PescatoriPage(),
+                ),
+              );
+            },
+          ),
           _menuCard(
             context,
             icon: Icons.emoji_events,
             titolo: 'Trofei',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const TrofeiPage(),
+                ),
+              );
+            },
           ),
-
           _menuCard(
             context,
             icon: Icons.phishing,
             titolo: 'Gare',
             onTap: () {},
           ),
-
         ],
       ),
-
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(12),
         child: Text(
@@ -101,21 +94,17 @@ onTap: () {
     required String titolo,
     required VoidCallback onTap,
   }) {
-
     return Card(
       child: InkWell(
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
             Icon(
               icon,
               size: 48,
             ),
-
             const SizedBox(height: 10),
-
             Text(
               titolo,
               style: const TextStyle(
@@ -123,7 +112,6 @@ onTap: () {
                 fontWeight: FontWeight.bold,
               ),
             )
-
           ],
         ),
       ),
