@@ -55,35 +55,56 @@ class _ModificaSquadraFormState extends State<ModificaSquadraForm> {
     });
   }
 
-  Future<void> salva() async {
-    setState(() => loading = true);
+Future<void> salva() async {
+  final zone = zoneSquadra.whereType<int>().toList();
 
-    try {
-      for (int i = 0; i < widget.iscrizioni.length; i++) {
-        await service.updateIscrizione(
-          widget.iscrizioni[i]['id'],
-          {
-            'pescatore_id': pescatoriSquadra[i],
-            'zona': zoneSquadra[i],
-            'updated_at': DateTime.now().toIso8601String(),
-          },
-        );
-      }
+if (zone.length != zone.toSet().length) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Non possono esserci zone duplicate',
+      ),
+    ),
+  );
 
-      if (!mounted) return;
+  return;
+}
+  setState(() => loading = true);
 
-      Navigator.pop(
-        context,
-        true,
+  try {
+    final ordinati = List<Map<String, dynamic>>.from(
+      widget.iscrizioni,
+    )..sort(
+        (a, b) => (a['zona'] ?? 999).compareTo(
+          b['zona'] ?? 999,
+        ),
       );
-    } finally {
-      if (mounted) {
-        setState(
-          () => loading = false,
-        );
-      }
+
+    for (int i = 0; i < ordinati.length; i++) {
+      await service.updateIscrizione(
+        ordinati[i]['id'],
+        {
+          'pescatore_id': pescatoriSquadra[i],
+          'zona': zoneSquadra[i],
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+      );
+    }
+
+    if (!mounted) return;
+
+    Navigator.pop(
+      context,
+      true,
+    );
+  } finally {
+    if (mounted) {
+      setState(
+        () => loading = false,
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -115,22 +136,19 @@ class _ModificaSquadraFormState extends State<ModificaSquadraForm> {
                         decoration: InputDecoration(
                           labelText: 'Pescatore ${index + 1}',
                         ),
-                        items: pescatori
-                            .where(
-                          (p) =>
-                              !pescatoriGiaIscritti.contains(
-                                p['id'],
-                              ) &&
-                              !pescatoriSquadra
-                                  .whereType<String>()
-                                  .where(
-                                    (id) => id != pescatoriSquadra[index],
-                                  )
-                                  .contains(
-                                    p['id'],
-                                  ),
-                        )
-                            .map<DropdownMenuItem<String>>(
+items: pescatori
+    .where(
+      (p) =>
+          !pescatoriSquadra
+              .whereType<String>()
+              .where(
+                (id) => id != pescatoriSquadra[index],
+              )
+              .contains(
+                p['id'],
+              ),
+    )
+                                .map<DropdownMenuItem<String>>(
                           (p) {
                             return DropdownMenuItem<String>(
                               value: p['id'],

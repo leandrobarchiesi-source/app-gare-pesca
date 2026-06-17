@@ -57,6 +57,17 @@ class _ModificaCoppiaFormState extends State<ModificaCoppiaForm> {
   }
 
   Future<void> salva() async {
+    if (zona1 == zona2) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text(
+        'Le zone devono essere diverse',
+      ),
+    ),
+  );
+
+  return;
+}
     setState(() => loading = true);
 
     try {
@@ -99,101 +110,151 @@ class _ModificaCoppiaFormState extends State<ModificaCoppiaForm> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final separate = widget.iscrizioni.any(
-      (i) => i['zona'] != null,
-    );
+@override
+Widget build(BuildContext context) {
+  final separate = widget.iscrizioni.any(
+    (i) => i['zona'] != null,
+  );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Modifica Coppia',
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Modifica Coppia',
+      ),
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: pescatore1Id,
+                decoration: const InputDecoration(
+                  labelText: 'Pescatore 1',
+                ),
+                items: pescatori
+                    .where(
+                      (p) => p['id'] != pescatore2Id,
+                    )
+                    .map<DropdownMenuItem<String>>(
+                  (p) {
+                    return DropdownMenuItem<String>(
+                      value: p['id'],
+                      child: Text(
+                        '${p['cognome']} ${p['nome']}',
+                      ),
+                    );
+                  },
+                ).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    pescatore1Id = v;
+                  });
+                },
+              ),
+            ),
+            if (separate) ...[
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 100,
+                child: DropdownButtonFormField<int>(
+                  value: zona1,
+                  decoration: const InputDecoration(
+                    labelText: 'Zona',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text('1'),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text('2'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      zona1 = v;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ],
         ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          DropdownButtonFormField<String>(
-            value: pescatore1Id,
-            decoration: const InputDecoration(
-              labelText: 'Pescatore 1',
-            ),
-            items: pescatori.map<DropdownMenuItem<String>>((p) {
-              return DropdownMenuItem<String>(
-                value: p['id'] as String,
-                child: Text(
-                  '${p['cognome']} ${p['nome']}',
+
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: pescatore2Id,
+                decoration: const InputDecoration(
+                  labelText: 'Pescatore 2',
                 ),
-              );
-            }).toList(),
-            onChanged: (v) {
-              setState(() {
-                pescatore1Id = v;
-              });
-            },
-          ),
-          if (separate) ...[
-            const SizedBox(
-              height: 12,
-            ),
-            TextFormField(
-              initialValue: zona1?.toString(),
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Zona 1',
+                items: pescatori
+                    .where(
+                      (p) => p['id'] != pescatore1Id,
+                    )
+                    .map<DropdownMenuItem<String>>(
+                  (p) {
+                    return DropdownMenuItem<String>(
+                      value: p['id'],
+                      child: Text(
+                        '${p['cognome']} ${p['nome']}',
+                      ),
+                    );
+                  },
+                ).toList(),
+                onChanged: (v) {
+                  setState(() {
+                    pescatore2Id = v;
+                  });
+                },
               ),
-              onChanged: (v) {
-                zona1 = int.tryParse(v);
-              },
             ),
-          ],
-          const SizedBox(
-            height: 12,
-          ),
-          DropdownButtonFormField<String>(
-            value: pescatore2Id,
-            decoration: const InputDecoration(
-              labelText: 'Pescatore 2',
-            ),
-            items: pescatori.map<DropdownMenuItem<String>>((p) {
-              return DropdownMenuItem<String>(
-                value: p['id'] as String,
-                child: Text(
-                  '${p['cognome']} ${p['nome']}',
+            if (separate) ...[
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 100,
+                child: DropdownButtonFormField<int>(
+                  value: zona2,
+                  decoration: const InputDecoration(
+                    labelText: 'Zona',
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 1,
+                      child: Text('1'),
+                    ),
+                    DropdownMenuItem(
+                      value: 2,
+                      child: Text('2'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    setState(() {
+                      zona2 = v;
+                    });
+                  },
                 ),
-              );
-            }).toList(),
-            onChanged: (v) {
-              setState(() {
-                pescatore2Id = v;
-              });
-            },
-          ),
-          if (separate) ...[
-            const SizedBox(
-              height: 12,
-            ),
-            TextFormField(
-              initialValue: zona2?.toString(),
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Zona 2',
               ),
-              onChanged: (v) {
-                zona2 = int.tryParse(v);
-              },
-            ),
+            ],
           ],
-          const SizedBox(
-            height: 24,
+        ),
+
+        const SizedBox(height: 24),
+
+        ElevatedButton(
+          onPressed: loading ? null : salva,
+          child: const Text(
+            'Salva',
           ),
-          ElevatedButton(
-            onPressed: loading ? null : salva,
-            child: const Text('Salva'),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
