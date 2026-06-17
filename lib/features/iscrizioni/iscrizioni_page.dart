@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'iscrizioni_service.dart';
 import 'iscrizione_form.dart';
 import 'modifica_coppia_form.dart';
+import 'modifica_squadra_form.dart';
 
 class IscrizioniPage extends StatefulWidget {
   const IscrizioniPage({super.key});
@@ -204,14 +205,32 @@ class _IscrizioniPageState extends State<IscrizioniPage> {
                               Icons.edit,
                             ),
                             onPressed: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ModificaCoppiaForm(
-                                    iscrizioni: g.value,
+                              final tipoGruppo =
+                                  g.value.first['gruppo']?['tipo'] ?? '';
+
+                              bool? result;
+
+                              if (tipoGruppo == 'COPPIA') {
+                                result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ModificaCoppiaForm(
+                                      iscrizioni: g.value,
+                                    ),
                                   ),
-                                ),
-                              );
+                                );
+                              }
+
+                              if (tipoGruppo == 'SQUADRA') {
+                                result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ModificaSquadraForm(
+                                      iscrizioni: g.value,
+                                    ),
+                                  ),
+                                );
+                              }
 
                               if (result == true) {
                                 await carica();
