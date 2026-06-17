@@ -18,12 +18,29 @@ class IscrizioniService {
             nome,
             cognome
           ),
-          gruppo:gruppo_id (
-            id,
-            nome,
-            lettera
-          )
+gruppo:gruppo_id (
+  id,
+  nome,
+  lettera,
+  tipo,
+  societa:societa_id (
+    id,
+    nome
+  )
+)
         ''').eq('deleted', false).order('created_at');
+
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getIscrizioniByGruppo(
+    String gruppoId,
+  ) async {
+    final data = await _supabase
+        .from('iscrizioni')
+        .select()
+        .eq('gruppo_id', gruppoId)
+        .eq('deleted', false);
 
     return List<Map<String, dynamic>>.from(data);
   }
@@ -83,11 +100,11 @@ class IscrizioniService {
   }
 
   Future<void> deleteGruppo(
-    String id,
+    String gruppoId,
   ) async {
     await _supabase.from('gruppi').update({
       'deleted': true,
-    }).eq('id', id);
+    }).eq('id', gruppoId);
   }
 
   Future<List<Map<String, dynamic>>> getGruppiByGara(
