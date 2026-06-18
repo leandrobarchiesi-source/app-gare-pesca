@@ -5,40 +5,44 @@ class SorteggiService {
 
   Future<List<Map<String, dynamic>>> getGare() async {
     final data = await supabase
-    .from('gare')
-    .select('''
+        .from('gare')
+        .select('''
       *,
       trofeo:trofei(*)
     ''')
-    .eq(
-      'deleted',
-      false,
-    )
-    .order(
-      'data_gara',
-    );
+        .eq(
+          'deleted',
+          false,
+        )
+        .order(
+          'data_gara',
+        );
     return List<Map<String, dynamic>>.from(
       data,
     );
-    
   }
-  Future<List<Map<String, dynamic>>> getIscrizioniByGara(
-  String garaId,
-) async {
-  final data = await supabase
-      .from('iscrizioni')
-      .select('''
-        *,
-        pescatore:pescatori(*),
-        gruppo:gruppi(*)
-      ''')
-      .eq(
-        'gara_id',
-        garaId,
-      );
 
-  return List<Map<String, dynamic>>.from(
-    data,
-  );
-}
+  Future<List<Map<String, dynamic>>> getIscrizioniByGara(
+    String garaId,
+  ) async {
+    final data = await supabase
+        .from('iscrizioni')
+        .select('''
+      *,
+      pescatore:pescatori(*),
+      gruppo:gruppi(*)
+    ''')
+        .eq(
+          'gara_id',
+          garaId,
+        )
+        .eq(
+          'deleted',
+          false,
+        );
+
+    return List<Map<String, dynamic>>.from(
+      data,
+    );
+  }
 }
