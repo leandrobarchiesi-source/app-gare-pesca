@@ -6,6 +6,7 @@ import '../features/trofei/trofei_page.dart';
 import '../features/gare/gare_page.dart';
 import '../features/iscrizioni/iscrizioni_page.dart';
 import '../features/sorteggi/sorteggi_page.dart';
+import '../auth/login_page.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -25,7 +26,13 @@ class DashboardPage extends StatelessWidget {
 
               if (!context.mounted) return;
 
-              Navigator.pop(context);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const LoginPage(),
+                ),
+                (route) => false,
+              );
             },
           )
         ],
@@ -86,33 +93,32 @@ class DashboardPage extends StatelessWidget {
               );
             },
           ),
-_menuCard(
-  context,
-  icon: Icons.how_to_reg,
-  titolo: 'Iscrizioni',
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const IscrizioniPage(),
-      ),
-    );
-  },
-),
-
-_menuCard(
-  context,
-  icon: Icons.casino,
-  titolo: 'Sorteggi',
-  onTap: () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SorteggiPage(),
-      ),
-    );
-  },
-),
+          _menuCard(
+            context,
+            icon: Icons.how_to_reg,
+            titolo: 'Iscrizioni',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const IscrizioniPage(),
+                ),
+              );
+            },
+          ),
+          _menuCard(
+            context,
+            icon: Icons.casino,
+            titolo: 'Sorteggi',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SorteggiPage(),
+                ),
+              );
+            },
+          ),
         ],
       ),
       bottomNavigationBar: Padding(
