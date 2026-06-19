@@ -45,4 +45,21 @@ class SorteggiService {
       data,
     );
   }
+
+  Future<void> eliminaPresorteggio(
+    String garaId,
+  ) async {
+    await supabase.from('presorteggi').delete().eq(
+          'gara_id',
+          garaId,
+        );
+  }
+
+  Future<void> salvaPresorteggio(
+    List<Map<String, dynamic>> righe,
+  ) async {
+    await supabase.from('presorteggi').insert(
+          righe,
+        );
+  }
 }

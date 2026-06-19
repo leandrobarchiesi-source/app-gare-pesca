@@ -287,6 +287,12 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 (g) => g['id'] == garaSelezionata,
               );
 
+              final righeDaSalvare = <Map<String, dynamic>>[];
+
+              await service.eliminaPresorteggio(
+                garaSelezionata!,
+              );
+
               final zone = <int, int>{};
 
               final numZone = gara['num_zone'] ?? 1;
@@ -386,6 +392,8 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
                     final lettera = letteraDaIndice(i);
 
+                    final tecnico = settore['tecnico'] == true;
+
                     String nome;
 
                     final modalita = gara['modalita_gara'] ?? '';
@@ -400,11 +408,37 @@ class _SorteggiPageState extends State<SorteggiPage> {
                     nuovaAnteprima.add(
                       '$lettera - $nome',
                     );
+
+                    if (modalita.contains('Box')) {
+                      righeDaSalvare.add({
+                        'gara_id': garaSelezionata,
+                        'zona': zona,
+                        'settore_numero': numeroSettore,
+                        'concorrente_lettera': lettera,
+                        'gruppo_id': c['gruppo']['id'],
+                        'pescatore_id': null,
+                        'tecnico': tecnico,
+                      });
+                    } else {
+                      righeDaSalvare.add({
+                        'gara_id': garaSelezionata,
+                        'zona': zona,
+                        'settore_numero': numeroSettore,
+                        'concorrente_lettera': lettera,
+                        'pescatore_id': c['pescatore']['id'],
+                        'gruppo_id': c['gruppo']?['id'],
+                        'tecnico': tecnico,
+                      });
+                    }
                   }
 
                   numeroSettore++;
                 }
               }
+
+              await service.salvaPresorteggio(
+                righeDaSalvare,
+              );
 
               setState(() {
                 anteprima = nuovaAnteprima;
