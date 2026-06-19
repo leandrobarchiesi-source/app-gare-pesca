@@ -46,6 +46,26 @@ class SorteggiService {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getPresorteggioByGara(
+    String garaId,
+  ) async {
+    final data = await supabase
+        .from('presorteggi')
+        .select()
+        .eq(
+          'gara_id',
+          garaId,
+        )
+        .eq(
+          'deleted',
+          false,
+        );
+
+    return List<Map<String, dynamic>>.from(
+      data,
+    );
+  }
+
   Future<void> eliminaPresorteggio(
     String garaId,
   ) async {

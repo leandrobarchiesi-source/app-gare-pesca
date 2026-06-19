@@ -72,7 +72,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
 
     final componentiSquadra = garaSelezionata['componenti_squadra'] ?? 1;
 
-    if (modalita == 'Singola') {
+    if (modalita == 'Individuale') {
       if (pescatoreId == null) {
         return;
       }
@@ -84,7 +84,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
       }
     }
 
-    if (modalita == 'Coppie Separate') {
+    if (modalita == 'Coppie a Zone') {
       if (pescatore1Id == null ||
           pescatore2Id == null ||
           zona1 == null ||
@@ -115,7 +115,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
       }
     }
 
-    if (modalita == 'Squadre Separate') {
+    if (modalita == 'Squadre a Zone') {
       if (pescatoriSquadra.length != componentiSquadra) {
         return;
       }
@@ -127,7 +127,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
 
     setState(() => loading = true);
 
-    if (modalita == 'Squadre Separate') {
+    if (modalita == 'Squadre a Zone') {
       if (pescatoriSquadra.length != componentiSquadra) {
         return;
       }
@@ -138,7 +138,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
     }
 
     try {
-      if (modalita == 'Singola') {
+      if (modalita == 'Individuale') {
         final giaIscritto = await service.pescatoreGiaIscritto(
           garaId!,
           pescatoreId!,
@@ -255,7 +255,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
           'updated_at': DateTime.now().toIso8601String(),
         });
       }
-      if (modalita == 'Coppie Separate') {
+      if (modalita == 'Coppie a Zone') {
         final giaIscritto1 = await service.pescatoreGiaIscritto(
           garaId!,
           pescatore1Id!,
@@ -403,7 +403,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
         }
       }
 
-      if (modalita == 'Squadre Separate') {
+      if (modalita == 'Squadre a Zone') {
         final gruppiEsistenti = await service.getGruppiByGara(
           garaId!,
         );
@@ -542,7 +542,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               ),
             ),
           const SizedBox(height: 12),
-          if (modalita == 'Singola')
+          if (modalita == 'Individuale')
             DropdownButtonFormField<String>(
               value: pescatoreId,
               decoration: const InputDecoration(
@@ -568,7 +568,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
                 });
               },
             ),
-          if (modalita == 'Coppie a Box' && tipoComposizione == 'Libera') ...[
+          if (modalita == 'Coppie a Box' && tipoComposizione == '') ...[
             const SizedBox(height: 12),
             Text(
               'Coppia',
@@ -629,8 +629,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Coppie a Box' &&
-              tipoComposizione == 'Di Società') ...[
+          if (modalita == 'Coppie a Box' && tipoComposizione == 'Società') ...[
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: societaId,
@@ -723,8 +722,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Coppie Separate' &&
-              tipoComposizione == 'Libera') ...[
+          if (modalita == 'Coppie a Zone' && tipoComposizione == '') ...[
             const SizedBox(height: 12),
             Text(
               'Coppia',
@@ -827,8 +825,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Coppie Separate' &&
-              tipoComposizione == 'Di Società') ...[
+          if (modalita == 'Coppie a Zone' && tipoComposizione == 'Società') ...[
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: societaId,
@@ -963,7 +960,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Squadre a Box' && tipoComposizione == 'Libera') ...[
+          if (modalita == 'Squadre a Box' && tipoComposizione == '') ...[
             const SizedBox(height: 12),
             Text(
               'Squadra',
@@ -1019,8 +1016,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Squadre a Box' &&
-              tipoComposizione == 'Di Società') ...[
+          if (modalita == 'Squadre a Box' && tipoComposizione == 'Società') ...[
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: societaId,
@@ -1105,8 +1101,7 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Squadre Separate' &&
-              tipoComposizione == 'Libera') ...[
+          if (modalita == 'Squadre a Zone' && tipoComposizione == '') ...[
             const SizedBox(height: 12),
             Text(
               'Squadra',
@@ -1178,8 +1173,8 @@ class _IscrizioneFormState extends State<IscrizioneForm> {
               },
             ),
           ],
-          if (modalita == 'Squadre Separate' &&
-              tipoComposizione == 'Di Società') ...[
+          if (modalita == 'Squadre a Zone' &&
+              tipoComposizione == 'Società') ...[
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: societaId,

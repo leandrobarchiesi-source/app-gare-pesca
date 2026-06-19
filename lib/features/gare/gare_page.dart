@@ -33,8 +33,7 @@ class _GarePageState extends State<GarePage> {
     final gruppi = <String, List<Map<String, dynamic>>>{};
 
     for (final g in gare) {
-      final trofeo = g['trofeo']?['nome'] ?? '🎣 Gare Singole';
-
+      final trofeo = g['trofeo']?['nome'] ?? '🎣 Gare Individuali';
       gruppi.putIfAbsent(
         trofeo,
         () => [],

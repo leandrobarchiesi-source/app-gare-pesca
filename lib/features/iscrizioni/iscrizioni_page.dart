@@ -71,7 +71,7 @@ class _IscrizioniPageState extends State<IscrizioniPage> {
 
     final gruppo = iscrizione['gruppo'];
 
-    // ISCRIZIONE SINGOLA
+    // ISCRIZIONE INDIVIDUALE
     if (gruppo == null) {
       await service.deleteIscrizione(
         iscrizione['id'],
@@ -139,8 +139,7 @@ class _IscrizioniPageState extends State<IscrizioniPage> {
                 continue;
               }
 
-              final nomeGruppo = gruppo['nome'] ?? 'Gruppo';
-
+              final nomeGruppo = gruppo['nome'] ?? '';
               gruppi.putIfAbsent(
                 nomeGruppo,
                 () => [],

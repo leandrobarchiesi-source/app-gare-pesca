@@ -22,14 +22,14 @@ class _TrofeoFormState extends State<TrofeoForm> {
   final componentiCtrl = TextEditingController();
   final numProveCtrl = TextEditingController();
 
-  String modalitaGara = 'Singola';
-  String tipoComposizione = 'Libera';
+  String modalitaGara = 'Individuale';
+  String tipoComposizione = '';
 
   final modalitaDisponibili = [
-    'Singola',
-    'Coppie Separate',
+    'Individuale',
+    'Coppie a Zone',
     'Coppie a Box',
-    'Squadre Separate',
+    'Squadre a Zone',
     'Squadre a Box',
   ];
 
@@ -49,11 +49,11 @@ class _TrofeoFormState extends State<TrofeoForm> {
       descrizioneCtrl.text = t['descrizione'] ?? '';
 
       modalitaGara = (t['modalita_gara'] ?? '').toString().isEmpty
-          ? 'Singola'
+          ? 'Individuale'
           : t['modalita_gara'];
 
       tipoComposizione = (t['tipo_composizione'] ?? '').toString().isEmpty
-          ? 'Libera'
+          ? ''
           : t['tipo_composizione'];
 
       numZoneCtrl.text = t['num_zone']?.toString() ?? '';
@@ -99,22 +99,22 @@ class _TrofeoFormState extends State<TrofeoForm> {
       return;
     }
 
-    if (modalitaGara == 'Coppie Separate' && zone < 2) {
+    if (modalitaGara == 'Coppie a Zone' && zone < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Coppie Separate richiede almeno 2 zone',
+            'Coppie a Zone richiede almeno 2 zone',
           ),
         ),
       );
       return;
     }
 
-    if (modalitaGara == 'Squadre Separate' && zone < 2) {
+    if (modalitaGara == 'Squadre a Zone' && zone < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Squadre Separate richiede almeno 2 zone',
+            'Squadre a Zone richiede almeno 2 zone',
           ),
         ),
       );
@@ -124,16 +124,16 @@ class _TrofeoFormState extends State<TrofeoForm> {
     int componenti;
 
     switch (modalitaGara) {
-      case 'Singola':
+      case 'Individuale':
         componenti = 1;
         break;
 
-      case 'Coppie Separate':
+      case 'Coppie a Zone':
       case 'Coppie a Box':
         componenti = 2;
         break;
 
-      case 'Squadre Separate':
+      case 'Squadre a Zone':
         componenti = zone;
         break;
 
@@ -266,16 +266,16 @@ class _TrofeoFormState extends State<TrofeoForm> {
                 modalitaGara = v;
 
                 switch (v) {
-                  case 'Singola':
+                  case 'Individuale':
                     componentiCtrl.text = '1';
                     break;
 
-                  case 'Coppie Separate':
+                  case 'Coppie a Zone':
                   case 'Coppie a Box':
                     componentiCtrl.text = '2';
                     break;
 
-                  case 'Squadre Separate':
+                  case 'Squadre a Zone':
                     componentiCtrl.text = numZoneCtrl.text;
                     break;
 
@@ -286,28 +286,17 @@ class _TrofeoFormState extends State<TrofeoForm> {
               });
             },
           ),
-          if (modalitaGara != 'Singola') ...[
+          if (modalitaGara != 'Individuale') ...[
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: tipoComposizione,
-              decoration: const InputDecoration(
-                labelText: 'Composizione',
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Di Società',
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Libera',
-                  child: Text('Libera'),
-                ),
-                DropdownMenuItem(
-                  value: 'Di Società',
-                  child: Text('Di Società'),
-                ),
-              ],
+              value: tipoComposizione == 'Società',
               onChanged: (v) {
-                if (v == null) return;
-
                 setState(() {
-                  tipoComposizione = v;
+                  tipoComposizione = v == true ? 'Società' : '';
                 });
               },
             ),
@@ -316,7 +305,7 @@ class _TrofeoFormState extends State<TrofeoForm> {
           TextField(
             controller: numZoneCtrl,
             onChanged: (value) {
-              if (modalitaGara == 'Squadre Separate') {
+              if (modalitaGara == 'Squadre a Zone') {
                 setState(() {
                   componentiCtrl.text = value;
                 });

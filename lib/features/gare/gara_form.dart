@@ -28,14 +28,14 @@ class _GaraFormState extends State<GaraForm> {
   String? trofeoId;
   String? societaId;
 
-  String modalitaGara = 'Singola';
-  String tipoComposizione = 'Libera';
+  String modalitaGara = 'Individuale';
+  String tipoComposizione = '';
 
   final modalitaDisponibili = [
-    'Singola',
-    'Coppie Separate',
+    'Individuale',
+    'Coppie a Zone',
     'Coppie a Box',
-    'Squadre Separate',
+    'Squadre a Zone',
     'Squadre a Box',
   ];
 
@@ -64,24 +64,22 @@ class _GaraFormState extends State<GaraForm> {
       final mg = g['modalita_gara'];
 
       modalitaGara = mg == null || mg.toString().trim().isEmpty
-          ? 'Singola'
+          ? 'Individuale'
           : mg.toString();
-      tipoComposizione = (g['tipo_composizione'] ?? '').toString().isEmpty
-          ? 'Libera'
-          : g['tipo_composizione'];
+      tipoComposizione = (g['tipo_composizione'] ?? '').toString();
       componentiCtrl.text = g['componenti_squadra']?.toString() ?? '';
       if (componentiCtrl.text.isEmpty) {
         switch (modalitaGara) {
-          case 'Singola':
+          case 'Individuale':
             componentiCtrl.text = '1';
             break;
 
-          case 'Coppie Separate':
+          case 'Coppie a Zone':
           case 'Coppie a Box':
             componentiCtrl.text = '2';
             break;
 
-          case 'Squadre Separate':
+          case 'Squadre a Zone':
             componentiCtrl.text = numZoneCtrl.text;
             break;
         }
@@ -126,7 +124,7 @@ class _GaraFormState extends State<GaraForm> {
         (t) => t['id'] == trofeoId,
       );
 
-      modalitaGara = (trofeo['modalita_gara'] ?? 'Singola').toString();
+      modalitaGara = (trofeo['modalita_gara'] ?? 'Individuale').toString();
 
       numZoneCtrl.text = (trofeo['num_zone'] ?? '').toString();
 
@@ -134,22 +132,22 @@ class _GaraFormState extends State<GaraForm> {
     }
     final zone = int.tryParse(numZoneCtrl.text) ?? 0;
 
-    if (modalitaGara == 'Coppie Separate' && zone < 2) {
+    if (modalitaGara == 'Coppie a Zone' && zone < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Coppie Separate richiede almeno 2 zone',
+            'Coppie a Zone richiede almeno 2 zone',
           ),
         ),
       );
       return;
     }
 
-    if (modalitaGara == 'Squadre Separate' && zone < 2) {
+    if (modalitaGara == 'Squadre a Zone' && zone < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Squadre Separate richiede almeno 2 zone',
+            'Squadre a Zone richiede almeno 2 zone',
           ),
         ),
       );
@@ -160,16 +158,16 @@ class _GaraFormState extends State<GaraForm> {
 
     if (componenti == null) {
       switch (modalitaGara) {
-        case 'Singola':
+        case 'Individuale':
           componenti = 1;
           break;
 
-        case 'Coppie Separate':
+        case 'Coppie a Zone':
         case 'Coppie a Box':
           componenti = 2;
           break;
 
-        case 'Squadre Separate':
+        case 'Squadre a Zone':
           componenti = zone;
           break;
       }
@@ -266,14 +264,14 @@ class _GaraFormState extends State<GaraForm> {
                   );
 
                   modalitaGara =
-                      (trofeo['modalita_gara'] ?? 'Singola').toString();
+                      (trofeo['modalita_gara'] ?? 'Individuale').toString();
 
                   numZoneCtrl.text = (trofeo['num_zone'] ?? '').toString();
 
                   componentiCtrl.text =
                       (trofeo['componenti_squadra'] ?? '').toString();
                   tipoComposizione =
-                      (trofeo['tipo_composizione'] ?? 'Libera').toString();
+                      (trofeo['tipo_composizione'] ?? '').toString();
                 }
               });
             },
@@ -321,7 +319,7 @@ class _GaraFormState extends State<GaraForm> {
               title: const Text('Numero Zone'),
               subtitle: Text(numZoneCtrl.text),
             ),
-            if (trofeoId == null && modalitaGara == 'Squadre Separate') ...[
+            if (trofeoId == null && modalitaGara == 'Squadre a Zone') ...[
               const SizedBox(height: 12),
               ListTile(
                 title: const Text('Componenti Squadra'),
@@ -350,7 +348,7 @@ class _GaraFormState extends State<GaraForm> {
                 modalitaGara,
               )
                   ? modalitaGara
-                  : 'Singola',
+                  : 'Individuale',
               decoration: const InputDecoration(
                 labelText: 'Modalità Gara',
               ),
@@ -367,16 +365,16 @@ class _GaraFormState extends State<GaraForm> {
                   modalitaGara = v;
 
                   switch (v) {
-                    case 'Singola':
+                    case 'Individuale':
                       componentiCtrl.text = '1';
                       break;
 
-                    case 'Coppie Separate':
+                    case 'Coppie a Zone':
                     case 'Coppie a Box':
                       componentiCtrl.text = '2';
                       break;
 
-                    case 'Squadre Separate':
+                    case 'Squadre a Zone':
                       componentiCtrl.text = numZoneCtrl.text;
                       break;
 
@@ -387,27 +385,16 @@ class _GaraFormState extends State<GaraForm> {
                 });
               },
             ),
-          if (trofeoId == null && modalitaGara != 'Singola')
-            DropdownButtonFormField<String>(
-              value: tipoComposizione,
-              decoration: const InputDecoration(
-                labelText: 'Composizione',
+          if (trofeoId == null && modalitaGara != 'Individuale')
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text(
+                'Di Società',
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'Libera',
-                  child: Text('Libera'),
-                ),
-                DropdownMenuItem(
-                  value: 'Di Società',
-                  child: Text('Di Società'),
-                ),
-              ],
+              value: tipoComposizione == 'Società',
               onChanged: (v) {
-                if (v == null) return;
-
                 setState(() {
-                  tipoComposizione = v;
+                  tipoComposizione = v == true ? 'Società' : '';
                 });
               },
             ),
@@ -436,7 +423,7 @@ class _GaraFormState extends State<GaraForm> {
                 labelText: 'Numero Zone',
               ),
               onChanged: (value) {
-                if (modalitaGara == 'Squadre Separate') {
+                if (modalitaGara == 'Squadre a Zone') {
                   setState(() {
                     componentiCtrl.text = value;
                   });
@@ -444,7 +431,7 @@ class _GaraFormState extends State<GaraForm> {
               },
             ),
           if (trofeoId == null &&
-              (modalitaGara == 'Squadre Separate' ||
+              (modalitaGara == 'Squadre a Zone' ||
                   modalitaGara == 'Squadre a Box')) ...[
             const SizedBox(height: 12),
             ListTile(

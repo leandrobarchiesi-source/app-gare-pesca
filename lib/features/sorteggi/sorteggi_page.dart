@@ -15,6 +15,16 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
   List<Map<String, dynamic>> gare = [];
   List<String> anteprima = [];
+  List<Map<String, dynamic>> presorteggio = [];
+  Map<String, dynamic>? garaInfo;
+
+  int numeroIscritti = 0;
+
+  int numeroSquadreOCoppie = 0;
+
+  int numeroSettori = 0;
+
+  bool presorteggioPresente = false;
 
   String? garaSelezionata;
 
@@ -187,6 +197,64 @@ class _SorteggiPageState extends State<SorteggiPage> {
     }
   }
 
+  Future<void> aggiornaRiepilogo() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final gara = gare.firstWhere(
+      (g) => g['id'] == garaSelezionata,
+    );
+
+    final iscrizioni = await service.getIscrizioniByGara(
+      garaSelezionata!,
+    );
+
+    final presorteggi = await service.getPresorteggioByGara(
+      garaSelezionata!,
+    );
+
+    final modalita = gara['modalita_gara'] ?? '';
+
+    int squadreOCoppie = 0;
+
+    if (modalita.contains('Box')) {
+      final gruppi = <String>{};
+
+      for (final i in iscrizioni) {
+        final gruppo = i['gruppo'];
+
+        if (gruppo == null) continue;
+
+        gruppi.add(
+          gruppo['id'],
+        );
+      }
+
+      squadreOCoppie = gruppi.length;
+    }
+
+    final settori = <String>{};
+
+    for (final p in presorteggi) {
+      settori.add(
+        '${p['zona']}-${p['settore_numero']}',
+      );
+    }
+
+    setState(() {
+      garaInfo = gara;
+
+      numeroIscritti = iscrizioni.length;
+
+      numeroSquadreOCoppie = squadreOCoppie;
+
+      numeroSettori = settori.length;
+
+      presorteggioPresente = presorteggi.isNotEmpty;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -216,15 +284,66 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 ),
               );
             }).toList(),
-            onChanged: (v) {
+            onChanged: (v) async {
               setState(() {
                 garaSelezionata = v;
               });
+
+              await aggiornaRiepilogo();
             },
           ),
           const SizedBox(
             height: 16,
           ),
+          if (garaInfo != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(
+                  12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'RIEPILOGO GARA',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 8,
+                    ),
+                    Text(
+                      'Trofeo: ${garaInfo!['trofeo']?['nome'] ?? '-'}',
+                    ),
+                    Text(
+                      'Modalità: ${garaInfo!['modalita_gara']}',
+                    ),
+                    Text(
+                      'Zone: ${garaInfo!['num_zone'] ?? 1}',
+                    ),
+                    Text(
+                      'Iscritti: $numeroIscritti',
+                    ),
+                    if ((garaInfo!['modalita_gara'] ?? '').contains('Squadre'))
+                      Text(
+                        'Squadre: $numeroSquadreOCoppie',
+                      ),
+                    if ((garaInfo!['modalita_gara'] ?? '').contains('Coppie'))
+                      Text(
+                        'Coppie: $numeroSquadreOCoppie',
+                      ),
+                    Text(
+                      'Settori: $numeroSettori',
+                    ),
+                    Text(
+                      'Presorteggio: '
+                      '${presorteggioPresente ? 'SI' : 'NO'}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
           TextFormField(
             controller: partecipantiPerSettoreController,
             keyboardType: TextInputType.number,
@@ -448,6 +567,28 @@ class _SorteggiPageState extends State<SorteggiPage> {
               'Genera Presorteggio',
             ),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              if (garaSelezionata == null) {
+                return;
+              }
+
+              final dati = await service.getPresorteggioByGara(
+                garaSelezionata!,
+              );
+
+              setState(() {
+                presorteggio = dati;
+              });
+
+              debugPrint(
+                'Righe presorteggio: ${dati.length}',
+              );
+            },
+            child: const Text(
+              'Carica Presorteggio',
+            ),
+          ),
           const SizedBox(
             height: 24,
           ),
@@ -461,6 +602,24 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ),
+          if (presorteggio.isNotEmpty) ...[
+            const SizedBox(
+              height: 20,
+            ),
+            const Text(
+              'Presorteggio salvato',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            ...presorteggio.map(
+              (r) => Text(
+                'Zona ${r['zona']} '
+                '- Settore ${r['settore_numero']} '
+                '- ${r['concorrente_lettera']}',
+              ),
+            ),
+          ],
         ],
       ),
     );
