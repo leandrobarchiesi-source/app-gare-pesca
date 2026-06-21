@@ -7,9 +7,9 @@ class SorteggiService {
     final data = await supabase
         .from('gare')
         .select('''
-      *,
-      trofeo:trofei(*)
-    ''')
+          *,
+          trofeo:trofei(*)
+        ''')
         .eq(
           'deleted',
           false,
@@ -17,6 +17,7 @@ class SorteggiService {
         .order(
           'data_gara',
         );
+
     return List<Map<String, dynamic>>.from(
       data,
     );
@@ -28,10 +29,10 @@ class SorteggiService {
     final data = await supabase
         .from('iscrizioni')
         .select('''
-      *,
-      pescatore:pescatori(*),
-      gruppo:gruppi(*)
-    ''')
+          *,
+          pescatore:pescatori(*),
+          gruppo:gruppi(*)
+        ''')
         .eq(
           'gara_id',
           garaId,
@@ -51,7 +52,11 @@ class SorteggiService {
   ) async {
     final data = await supabase
         .from('presorteggi')
-        .select()
+        .select('''
+          *,
+          pescatore:pescatori(*),
+          gruppo:gruppi(*)
+        ''')
         .eq(
           'gara_id',
           garaId,
@@ -69,7 +74,10 @@ class SorteggiService {
   Future<void> eliminaPresorteggio(
     String garaId,
   ) async {
-    await supabase.from('presorteggi').delete().eq(
+    await supabase
+        .from('presorteggi')
+        .delete()
+        .eq(
           'gara_id',
           garaId,
         );
@@ -78,7 +86,55 @@ class SorteggiService {
   Future<void> salvaPresorteggio(
     List<Map<String, dynamic>> righe,
   ) async {
-    await supabase.from('presorteggi').insert(
+    await supabase
+        .from('presorteggi')
+        .insert(
+          righe,
+        );
+  }
+
+  Future<List<Map<String, dynamic>>> getSorteggioByGara(
+    String garaId,
+  ) async {
+    final data = await supabase
+        .from('sorteggi')
+        .select('''
+          *,
+          pescatore:pescatori(*),
+          gruppo:gruppi(*)
+        ''')
+        .eq(
+          'gara_id',
+          garaId,
+        )
+        .eq(
+          'deleted',
+          false,
+        );
+
+    return List<Map<String, dynamic>>.from(
+      data,
+    );
+  }
+
+  Future<void> eliminaSorteggio(
+    String garaId,
+  ) async {
+    await supabase
+        .from('sorteggi')
+        .delete()
+        .eq(
+          'gara_id',
+          garaId,
+        );
+  }
+
+  Future<void> salvaSorteggio(
+    List<Map<String, dynamic>> righe,
+  ) async {
+    await supabase
+        .from('sorteggi')
+        .insert(
           righe,
         );
   }

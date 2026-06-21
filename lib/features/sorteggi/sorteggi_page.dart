@@ -83,7 +83,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
       return settori;
     }
 
-    int numeroSettore = 0;
 
     for (int i = 0; i < completi + 1; i++) {
       final lettera = String.fromCharCode(65 + i);
@@ -101,7 +100,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
           'tecnico': false,
         });
 
-        numeroSettore++;
       }
     }
 
@@ -254,6 +252,84 @@ class _SorteggiPageState extends State<SorteggiPage> {
       presorteggioPresente = presorteggi.isNotEmpty;
     });
   }
+
+  List<Widget> _buildPresorteggioVisualizzato() {
+  final widgets = <Widget>[];
+
+  final righe = List<Map<String, dynamic>>.from(
+    presorteggio,
+  );
+
+  righe.sort(
+    (a, b) {
+      final zona =
+          (a['zona'] as int).compareTo(
+        b['zona'] as int,
+      );
+
+      if (zona != 0) {
+        return zona;
+      }
+
+      return (a['settore_numero'] as int)
+          .compareTo(
+        b['settore_numero'] as int,
+      );
+    },
+  );
+
+  int? zonaCorrente;
+  int? settoreCorrente;
+
+  for (final r in righe) {
+    debugPrint(r.toString());
+    if (zonaCorrente != r['zona'] ||
+        settoreCorrente != r['settore_numero']) {
+      zonaCorrente = r['zona'];
+      settoreCorrente =
+          r['settore_numero'];
+
+      widgets.add(
+        const SizedBox(
+          height: 12,
+        ),
+      );
+
+      widgets.add(
+        Text(
+          'Zona $zonaCorrente - Settore $settoreCorrente',
+          style: const TextStyle(
+            fontWeight:
+                FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    String nome;
+
+    if (r['gruppo'] != null) {
+      nome = r['gruppo']['nome'];
+    } else {
+      nome =
+          '${r['pescatore']['cognome']} ${r['pescatore']['nome']}';
+    }
+
+    widgets.add(
+      Padding(
+        padding:
+            const EdgeInsets.only(
+          left: 12,
+        ),
+        child: Text(
+          '${r['concorrente_lettera']} - $nome',
+        ),
+      ),
+    );
+  }
+
+  return widgets;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -602,25 +678,19 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ),
-          if (presorteggio.isNotEmpty) ...[
-            const SizedBox(
-              height: 20,
-            ),
-            const Text(
-              'Presorteggio salvato',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            ...presorteggio.map(
-              (r) => Text(
-                'Zona ${r['zona']} '
-                '- Settore ${r['settore_numero']} '
-                '- ${r['concorrente_lettera']}',
-              ),
-            ),
-          ],
-        ],
+if (presorteggio.isNotEmpty) ...[
+  const SizedBox(
+    height: 20,
+  ),
+  const Text(
+    'Presorteggio salvato',
+    style: TextStyle(
+      fontWeight: FontWeight.bold,
+    ),
+  ),
+  ..._buildPresorteggioVisualizzato(),
+],       
+ ],
       ),
     );
   }
