@@ -53,10 +53,27 @@ class SorteggiService {
     final data = await supabase
         .from('presorteggi')
         .select('''
-          *,
-          pescatore:pescatori(*),
-          gruppo:gruppi(*)
-        ''')
+        *,
+        pescatore:pescatore_id (
+          id,
+          nome,
+          cognome,
+          societa:societa_id (
+            id,
+            nome
+          )
+        ),
+        gruppo:gruppo_id (
+          id,
+          nome,
+          lettera,
+          tipo,
+          societa:societa_id (
+            id,
+            nome
+          )
+        )
+      ''')
         .eq(
           'gara_id',
           garaId,
@@ -74,10 +91,7 @@ class SorteggiService {
   Future<void> eliminaPresorteggio(
     String garaId,
   ) async {
-    await supabase
-        .from('presorteggi')
-        .delete()
-        .eq(
+    await supabase.from('presorteggi').delete().eq(
           'gara_id',
           garaId,
         );
@@ -86,9 +100,7 @@ class SorteggiService {
   Future<void> salvaPresorteggio(
     List<Map<String, dynamic>> righe,
   ) async {
-    await supabase
-        .from('presorteggi')
-        .insert(
+    await supabase.from('presorteggi').insert(
           righe,
         );
   }
@@ -120,10 +132,7 @@ class SorteggiService {
   Future<void> eliminaSorteggio(
     String garaId,
   ) async {
-    await supabase
-        .from('sorteggi')
-        .delete()
-        .eq(
+    await supabase.from('sorteggi').delete().eq(
           'gara_id',
           garaId,
         );
@@ -132,9 +141,7 @@ class SorteggiService {
   Future<void> salvaSorteggio(
     List<Map<String, dynamic>> righe,
   ) async {
-    await supabase
-        .from('sorteggi')
-        .insert(
+    await supabase.from('sorteggi').insert(
           righe,
         );
   }

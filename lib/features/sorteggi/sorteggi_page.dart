@@ -15,7 +15,16 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
   List<Map<String, dynamic>> gare = [];
   List<String> anteprima = [];
+  List<String> anteprimaSorteggio = [];
+  List<Map<String, dynamic>> righeSorteggio = [];
   List<Map<String, dynamic>> presorteggio = [];
+  List<int> settoriDisponibili = [];
+
+  List<String> lettereDisponibili = [];
+
+  final Map<int, TextEditingController> controllerSettori = {};
+
+  final Map<String, TextEditingController> controllerConcorrenti = {};
   Map<String, dynamic>? garaInfo;
 
   int numeroIscritti = 0;
@@ -23,6 +32,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
   int numeroSquadreOCoppie = 0;
 
   int numeroSettori = 0;
+  int? settoreTecnicoNumero;
+
+  String? settoreTecnicoLettera;
 
   bool presorteggioPresente = false;
 
@@ -83,7 +95,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
       return settori;
     }
 
-
     for (int i = 0; i < completi + 1; i++) {
       final lettera = String.fromCharCode(65 + i);
 
@@ -99,7 +110,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
           'posti': dimensioneSettore,
           'tecnico': false,
         });
-
       }
     }
 
@@ -254,85 +264,504 @@ class _SorteggiPageState extends State<SorteggiPage> {
   }
 
   List<Widget> _buildPresorteggioVisualizzato() {
-  final widgets = <Widget>[];
+    final widgets = <Widget>[];
 
-  final righe = List<Map<String, dynamic>>.from(
-    presorteggio,
-  );
+    final righe = List<Map<String, dynamic>>.from(
+      presorteggio,
+    );
 
-  righe.sort(
-    (a, b) {
-      final zona =
-          (a['zona'] as int).compareTo(
-        b['zona'] as int,
-      );
+    righe.sort(
+      (a, b) {
+        final zona = (a['zona'] as int).compareTo(
+          b['zona'] as int,
+        );
 
-      if (zona != 0) {
-        return zona;
+        if (zona != 0) {
+          return zona;
+        }
+
+        return (a['settore_numero'] as int).compareTo(
+          b['settore_numero'] as int,
+        );
+      },
+    );
+
+    int? zonaCorrente;
+    int? settoreCorrente;
+
+    for (final r in righe) {
+      debugPrint(r.toString());
+      if (zonaCorrente != r['zona'] || settoreCorrente != r['settore_numero']) {
+        zonaCorrente = r['zona'];
+        settoreCorrente = r['settore_numero'];
+
+        widgets.add(
+          const SizedBox(
+            height: 12,
+          ),
+        );
+
+        widgets.add(
+          Text(
+            'Zona $zonaCorrente - Settore $settoreCorrente',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
       }
 
-      return (a['settore_numero'] as int)
-          .compareTo(
-        b['settore_numero'] as int,
-      );
-    },
-  );
+      final modalita = garaInfo?['modalita_gara'] ?? '';
 
-  int? zonaCorrente;
-  int? settoreCorrente;
+      final tipoComposizione = garaInfo?['tipo_composizione'] ?? '';
 
-  for (final r in righe) {
-    debugPrint(r.toString());
-    if (zonaCorrente != r['zona'] ||
-        settoreCorrente != r['settore_numero']) {
-      zonaCorrente = r['zona'];
-      settoreCorrente =
-          r['settore_numero'];
+      String nome;
 
+      final pescatore = r['pescatore'];
+      final gruppo = r['gruppo'];
+
+      if (modalita.contains('Box')) {
+        nome = gruppo?['nome'] ?? 'Gruppo';
+      } else if (pescatore != null) {
+        final nomePescatore = '${pescatore['cognome']} ${pescatore['nome']}';
+
+        if (modalita == 'Individuale') {
+          final societa = pescatore['societa']?['nome'];
+
+          nome = nomePescatore;
+
+          if (societa != null && societa.toString().isNotEmpty) {
+            nome += ' ($societa)';
+          }
+        } else if (modalita.contains('Coppie') && tipoComposizione.isEmpty) {
+          final societa = pescatore['societa']?['nome'];
+
+          nome = nomePescatore;
+
+          if (societa != null && societa.toString().isNotEmpty) {
+            nome += ' ($societa)';
+          }
+        } else {
+          nome = nomePescatore;
+
+          final nomeGruppo = gruppo?['nome'];
+
+          if (nomeGruppo != null && nomeGruppo.toString().isNotEmpty) {
+            nome += ' ($nomeGruppo)';
+          }
+        }
+      } else {
+        nome = 'Dato mancante';
+      }
       widgets.add(
-        const SizedBox(
-          height: 12,
-        ),
-      );
-
-      widgets.add(
-        Text(
-          'Zona $zonaCorrente - Settore $settoreCorrente',
-          style: const TextStyle(
-            fontWeight:
-                FontWeight.bold,
+        Padding(
+          padding: const EdgeInsets.only(
+            left: 12,
+          ),
+          child: Text(
+            '${r['concorrente_lettera']} - $nome',
           ),
         ),
       );
     }
 
-    String nome;
+    return widgets;
+  }
 
-    if (r['gruppo'] != null) {
-      nome = r['gruppo']['nome'];
-    } else {
-      nome =
-          '${r['pescatore']['cognome']} ${r['pescatore']['nome']}';
+  void verificaEstrazioni() {
+    final errori = <String>[];
+
+    if (settoriDisponibili.length == 2 && settoreTecnicoNumero != null) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text(
+            'Verifica OK',
+          ),
+          content: const Text(
+            '✓ Estrazioni valide',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+
+      return;
     }
 
-    widgets.add(
-      Padding(
-        padding:
-            const EdgeInsets.only(
-          left: 12,
+    final lettereInserite = <String>{};
+
+    for (final s in settoriDisponibili) {
+      if (s == settoreTecnicoNumero) {
+        lettereInserite.add(
+          settoreTecnicoLettera!,
+        );
+        continue;
+      }
+      final valore = controllerSettori[s]!.text.trim().toUpperCase();
+
+      if (valore.isEmpty) {
+        errori.add(
+          'Settore $s non compilato',
+        );
+        continue;
+      }
+
+      if (lettereInserite.contains(
+        valore,
+      )) {
+        errori.add(
+          'Lettera $valore duplicata',
+        );
+      }
+
+      lettereInserite.add(
+        valore,
+      );
+    }
+
+    for (int i = 0; i < settoriDisponibili.length; i++) {
+      final attesa = String.fromCharCode(
+        65 + i,
+      );
+
+      if (!lettereInserite.contains(
+        attesa,
+      )) {
+        errori.add(
+          'Manca lettera $attesa',
+        );
+      }
+    }
+
+    final numeriInseriti = <int>{};
+
+    for (final l in lettereDisponibili) {
+      final testo = controllerConcorrenti[l]!.text.trim();
+
+      if (testo.isEmpty) {
+        errori.add(
+          'Concorrente $l non compilato',
+        );
+        continue;
+      }
+
+      final numero = int.tryParse(testo);
+
+      if (numero == null) {
+        errori.add(
+          '$l contiene un valore non valido',
+        );
+        continue;
+      }
+
+      if (numeriInseriti.contains(
+        numero,
+      )) {
+        errori.add(
+          'Numero $numero duplicato',
+        );
+      }
+
+      numeriInseriti.add(
+        numero,
+      );
+    }
+
+    for (int i = 1; i <= lettereDisponibili.length; i++) {
+      if (!numeriInseriti.contains(
+        i,
+      )) {
+        errori.add(
+          'Manca numero $i',
+        );
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(
+          errori.isEmpty ? 'Verifica OK' : 'Errori rilevati',
         ),
-        child: Text(
-          '${r['concorrente_lettera']} - $nome',
+        content: Text(
+          errori.isEmpty ? '✓ Estrazioni valide' : errori.join('\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(
+                context,
+              );
+            },
+            child: const Text(
+              'OK',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void generaAnteprimaSorteggio() {
+    final mappaSettori = <int, String>{};
+
+    if (settoriDisponibili.length == 1) {
+      mappaSettori[settoriDisponibili.first] = 'A';
+    }
+
+    if (settoriDisponibili.length == 2 && settoreTecnicoNumero != null) {
+      final normale = settoriDisponibili.firstWhere(
+        (s) => s != settoreTecnicoNumero,
+      );
+
+      mappaSettori[normale] = 'A';
+
+      mappaSettori[settoreTecnicoNumero!] = settoreTecnicoLettera!;
+    }
+
+    final mappaConcorrenti = <String, int>{};
+
+    for (final s in settoriDisponibili) {
+      if (mappaSettori.containsKey(s)) {
+        continue;
+      }
+
+      if (s == settoreTecnicoNumero) {
+        mappaSettori[s] = settoreTecnicoLettera!;
+        continue;
+      }
+
+      mappaSettori[s] = controllerSettori[s]!.text.trim().toUpperCase();
+    }
+    for (final l in lettereDisponibili) {
+      mappaConcorrenti[l] = int.parse(
+        controllerConcorrenti[l]!.text,
+      );
+    }
+
+    final righe = <Map<String, dynamic>>[];
+
+    for (final r in presorteggio) {
+      righe.add({
+        'gara_id': r['gara_id'],
+        'zona': r['zona'],
+        'settore_lettera': mappaSettori[r['settore_numero']] ?? '',
+        'posto_numero': mappaConcorrenti[r['concorrente_lettera']] ?? 0,
+        'pescatore_id': r['pescatore_id'],
+        'gruppo_id': r['gruppo_id'],
+        'tecnico': r['tecnico'] ?? false,
+        'pescatore': r['pescatore'],
+        'gruppo': r['gruppo'],
+      });
+    }
+
+    // RINUMERAZIONE SETTORI TECNICI
+
+    final gruppiTecnici = <String, List<Map<String, dynamic>>>{};
+
+    for (final r in righe.where((e) => e['tecnico'] == true)) {
+      final chiave = '${r['zona']}_${r['settore_lettera']}';
+
+      gruppiTecnici.putIfAbsent(
+        chiave,
+        () => [],
+      );
+
+      gruppiTecnici[chiave]!.add(r);
+    }
+
+    for (final gruppo in gruppiTecnici.values) {
+      gruppo.sort(
+        (a, b) => (a['posto_numero'] as int).compareTo(
+          b['posto_numero'] as int,
+        ),
+      );
+
+      for (int i = 0; i < gruppo.length; i++) {
+        gruppo[i]['posto_numero'] = i + 1;
+      }
+    }
+
+    righe.sort(
+      (a, b) {
+        final zona = (a['zona'] as int).compareTo(
+          b['zona'] as int,
+        );
+
+        if (zona != 0) {
+          return zona;
+        }
+
+        final settore = (a['settore_lettera'] as String).compareTo(
+          b['settore_lettera'] as String,
+        );
+
+        if (settore != 0) {
+          return settore;
+        }
+
+        return (a['posto_numero'] as int).compareTo(
+          b['posto_numero'] as int,
+        );
+      },
+    );
+
+    final nuovaAnteprima = <String>[];
+
+    int? zonaCorrente;
+
+    String? settoreCorrente;
+
+    for (final r in righe) {
+      if (zonaCorrente != r['zona']) {
+        zonaCorrente = r['zona'];
+
+        settoreCorrente = null;
+
+        nuovaAnteprima.add('');
+
+        nuovaAnteprima.add(
+          'Zona $zonaCorrente',
+        );
+      }
+
+      if (settoreCorrente != r['settore_lettera']) {
+        settoreCorrente = r['settore_lettera'];
+
+        nuovaAnteprima.add('');
+
+        nuovaAnteprima.add(
+          'Settore $settoreCorrente',
+        );
+      }
+
+      String nome;
+
+      if (r['gruppo'] != null &&
+          (garaInfo?['modalita_gara'] ?? '').contains(
+            'Box',
+          )) {
+        nome = r['gruppo']['nome'];
+      } else {
+        final pescatore = r['pescatore'];
+
+        nome = '${pescatore['cognome']} ${pescatore['nome']}';
+      }
+
+      nuovaAnteprima.add(
+        'Posto ${r['posto_numero']} - $nome',
+      );
+    }
+
+    setState(() {
+      anteprimaSorteggio = nuovaAnteprima;
+
+      righeSorteggio = righe;
+    });
+  }
+
+  Future<void> salvaSorteggioDefinitivo() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    if (righeSorteggio.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Generare prima il sorteggio',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final conferma = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text(
+          'Salva Sorteggio',
+        ),
+        content: const Text(
+          'Confermare il salvataggio del sorteggio definitivo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(
+                context,
+                false,
+              );
+            },
+            child: const Text(
+              'No',
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(
+                context,
+                true,
+              );
+            },
+            child: const Text(
+              'Si',
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (conferma != true) {
+      return;
+    }
+
+    await service.eliminaSorteggio(
+      garaSelezionata!,
+    );
+
+    final righeDaSalvare = righeSorteggio
+        .map(
+          (r) => {
+            'gara_id': r['gara_id'],
+            'zona': r['zona'],
+            'settore_lettera': r['settore_lettera'],
+            'posto_numero': r['posto_numero'],
+            'pescatore_id': r['pescatore_id'],
+            'gruppo_id': r['gruppo_id'],
+            'tecnico': r['tecnico'],
+          },
+        )
+        .toList();
+
+    await service.salvaSorteggio(
+      righeDaSalvare,
+    );
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Sorteggio salvato',
         ),
       ),
     );
   }
 
-  return widgets;
-}
-
   @override
   Widget build(BuildContext context) {
+    final mostraEstrazioneSettori = settoriDisponibili.length > 1 &&
+        !(settoriDisponibili.length == 2 && settoreTecnicoNumero != null);
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -653,10 +1082,58 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 garaSelezionata!,
               );
 
+              final settori = <int>{};
+
+              final lettere = <String>{};
+
+              int? tecnicoNumero;
+
+              for (final r in dati) {
+                settori.add(
+                  r['settore_numero'],
+                );
+
+                lettere.add(
+                  r['concorrente_lettera'],
+                );
+
+                if (r['tecnico'] == true) {
+                  tecnicoNumero = r['settore_numero'];
+                }
+              }
+              final listaSettori = settori.toList()..sort();
+
+              final listaLettere = lettere.toList()..sort();
+
+              for (final s in listaSettori) {
+                controllerSettori.putIfAbsent(
+                  s,
+                  () => TextEditingController(),
+                );
+              }
+
+              for (final l in listaLettere) {
+                controllerConcorrenti.putIfAbsent(
+                  l,
+                  () => TextEditingController(),
+                );
+              }
+
               setState(() {
                 presorteggio = dati;
-              });
 
+                settoriDisponibili = listaSettori;
+
+                lettereDisponibili = listaLettere;
+
+                settoreTecnicoNumero = tecnicoNumero;
+
+                settoreTecnicoLettera =
+                    tecnicoNumero != null ? posizioneTecnico : null;
+              });
+              debugPrint(
+                'Tecnico: $settoreTecnicoNumero - $settoreTecnicoLettera',
+              );
               debugPrint(
                 'Righe presorteggio: ${dati.length}',
               );
@@ -678,19 +1155,190 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ),
-if (presorteggio.isNotEmpty) ...[
-  const SizedBox(
-    height: 20,
-  ),
-  const Text(
-    'Presorteggio salvato',
-    style: TextStyle(
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-  ..._buildPresorteggioVisualizzato(),
-],       
- ],
+          if (mostraEstrazioneSettori) ...[
+            const SizedBox(
+              height: 24,
+            ),
+            const Text(
+              'ESTRAZIONE SETTORI',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            ...settoriDisponibili.map(
+              (s) {
+                final isTecnico = settoreTecnicoNumero == s;
+
+                if (isTecnico) {
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                      bottom: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 120,
+                          child: Text(
+                            'Settore Tecnico →',
+                          ),
+                        ),
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: settoreTecnicoLettera,
+                            enabled: false,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 120,
+                        child: Text(
+                          'Settore $s →',
+                        ),
+                      ),
+                      Expanded(
+                        child: TextFormField(
+                          controller: controllerSettori[s],
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+          if (lettereDisponibili.isNotEmpty) ...[
+            const SizedBox(
+              height: 24,
+            ),
+            const Text(
+              'ESTRAZIONE CONCORRENTI',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            ...lettereDisponibili.map(
+              (l) => Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 8,
+                ),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        '$l →',
+                      ),
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: controllerConcorrenti[l],
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (presorteggio.isNotEmpty) ...[
+            const SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
+              onPressed: verificaEstrazioni,
+              child: const Text(
+                'Verifica Estrazioni',
+              ),
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            ElevatedButton(
+              onPressed: generaAnteprimaSorteggio,
+              child: const Text(
+                'Genera Sorteggio Definitivo',
+              ),
+            ),
+          ],
+          if (presorteggio.isNotEmpty) ...[
+            const SizedBox(
+              height: 20,
+            ),
+            const Text(
+              'Presorteggio salvato',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            ..._buildPresorteggioVisualizzato(),
+            if (anteprimaSorteggio.isNotEmpty) ...[
+              const SizedBox(
+                height: 24,
+              ),
+              const Divider(),
+              const SizedBox(
+                height: 12,
+              ),
+              const Text(
+                'SORTEGGIO DEFINITIVO',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(
+                height: 12,
+              ),
+              ...anteprimaSorteggio.map(
+                (riga) => Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: 4,
+                  ),
+                  child: Text(
+                    riga,
+                  ),
+                ),
+              ),
+              const SizedBox(
+                height: 20,
+              ),
+              ElevatedButton.icon(
+                onPressed: salvaSorteggioDefinitivo,
+                icon: const Icon(
+                  Icons.save,
+                ),
+                label: const Text(
+                  'Salva Sorteggio',
+                ),
+              ),
+            ],
+          ],
+        ],
       ),
     );
   }
