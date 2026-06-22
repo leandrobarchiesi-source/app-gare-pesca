@@ -17,6 +17,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
   List<String> anteprima = [];
   List<String> anteprimaSorteggio = [];
   List<Map<String, dynamic>> righeSorteggio = [];
+  bool sorteggioPresente = false;
   List<Map<String, dynamic>> presorteggio = [];
   List<int> settoriDisponibili = [];
 
@@ -222,6 +223,10 @@ class _SorteggiPageState extends State<SorteggiPage> {
       garaSelezionata!,
     );
 
+    final sorteggi = await service.getSorteggioByGara(
+      garaSelezionata!,
+    );
+
     final modalita = gara['modalita_gara'] ?? '';
 
     int squadreOCoppie = 0;
@@ -260,112 +265,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
       numeroSettori = settori.length;
 
       presorteggioPresente = presorteggi.isNotEmpty;
+
+      sorteggioPresente = sorteggi.isNotEmpty;
     });
-  }
-
-  List<Widget> _buildPresorteggioVisualizzato() {
-    final widgets = <Widget>[];
-
-    final righe = List<Map<String, dynamic>>.from(
-      presorteggio,
-    );
-
-    righe.sort(
-      (a, b) {
-        final zona = (a['zona'] as int).compareTo(
-          b['zona'] as int,
-        );
-
-        if (zona != 0) {
-          return zona;
-        }
-
-        return (a['settore_numero'] as int).compareTo(
-          b['settore_numero'] as int,
-        );
-      },
-    );
-
-    int? zonaCorrente;
-    int? settoreCorrente;
-
-    for (final r in righe) {
-      debugPrint(r.toString());
-      if (zonaCorrente != r['zona'] || settoreCorrente != r['settore_numero']) {
-        zonaCorrente = r['zona'];
-        settoreCorrente = r['settore_numero'];
-
-        widgets.add(
-          const SizedBox(
-            height: 12,
-          ),
-        );
-
-        widgets.add(
-          Text(
-            'Zona $zonaCorrente - Settore $settoreCorrente',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
-      }
-
-      final modalita = garaInfo?['modalita_gara'] ?? '';
-
-      final tipoComposizione = garaInfo?['tipo_composizione'] ?? '';
-
-      String nome;
-
-      final pescatore = r['pescatore'];
-      final gruppo = r['gruppo'];
-
-      if (modalita.contains('Box')) {
-        nome = gruppo?['nome'] ?? 'Gruppo';
-      } else if (pescatore != null) {
-        final nomePescatore = '${pescatore['cognome']} ${pescatore['nome']}';
-
-        if (modalita == 'Individuale') {
-          final societa = pescatore['societa']?['nome'];
-
-          nome = nomePescatore;
-
-          if (societa != null && societa.toString().isNotEmpty) {
-            nome += ' ($societa)';
-          }
-        } else if (modalita.contains('Coppie') && tipoComposizione.isEmpty) {
-          final societa = pescatore['societa']?['nome'];
-
-          nome = nomePescatore;
-
-          if (societa != null && societa.toString().isNotEmpty) {
-            nome += ' ($societa)';
-          }
-        } else {
-          nome = nomePescatore;
-
-          final nomeGruppo = gruppo?['nome'];
-
-          if (nomeGruppo != null && nomeGruppo.toString().isNotEmpty) {
-            nome += ' ($nomeGruppo)';
-          }
-        }
-      } else {
-        nome = 'Dato mancante';
-      }
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(
-            left: 12,
-          ),
-          child: Text(
-            '${r['concorrente_lettera']} - $nome',
-          ),
-        ),
-      );
-    }
-
-    return widgets;
   }
 
   void verificaEstrazioni() {
@@ -644,15 +546,24 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
       String nome;
 
-      if (r['gruppo'] != null &&
-          (garaInfo?['modalita_gara'] ?? '').contains(
-            'Box',
-          )) {
-        nome = r['gruppo']['nome'];
+      final modalita = garaInfo?['modalita_gara'] ?? '';
+
+      if (modalita.contains('Box')) {
+        nome = r['gruppo']?['nome'] ?? '';
+      } else if (r['gruppo'] != null && !modalita.contains('Libera')) {
+        final pescatore = r['pescatore'];
+
+        nome = '${pescatore['cognome']} '
+            '${pescatore['nome']} '
+            '(${r['gruppo']['nome']})';
       } else {
         final pescatore = r['pescatore'];
 
-        nome = '${pescatore['cognome']} ${pescatore['nome']}';
+        final societa = pescatore['societa']?['nome'] ?? '';
+
+        nome = '${pescatore['cognome']} '
+            '${pescatore['nome']}'
+            '${societa.isNotEmpty ? ' ($societa)' : ''}';
       }
 
       nuovaAnteprima.add(
@@ -758,6 +669,215 @@ class _SorteggiPageState extends State<SorteggiPage> {
     );
   }
 
+  Future<void> caricaSorteggio() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final dati = await service.getSorteggioByGara(
+      garaSelezionata!,
+    );
+
+    if (dati.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Nessun sorteggio salvato',
+          ),
+        ),
+      );
+      return;
+    }
+
+    dati.sort(
+      (a, b) {
+        final zona = (a['zona'] as int).compareTo(
+          b['zona'] as int,
+        );
+
+        if (zona != 0) {
+          return zona;
+        }
+
+        final settore = (a['settore_lettera'] as String).compareTo(
+          b['settore_lettera'] as String,
+        );
+
+        if (settore != 0) {
+          return settore;
+        }
+
+        return (a['posto_numero'] as int).compareTo(
+          b['posto_numero'] as int,
+        );
+      },
+    );
+
+    final anteprima = <String>[];
+
+    int? zonaCorrente;
+
+    String? settoreCorrente;
+
+    for (final r in dati) {
+      if (zonaCorrente != r['zona']) {
+        zonaCorrente = r['zona'];
+
+        settoreCorrente = null;
+
+        anteprima.add('');
+
+        anteprima.add(
+          'Zona $zonaCorrente',
+        );
+      }
+
+      if (settoreCorrente != r['settore_lettera']) {
+        settoreCorrente = r['settore_lettera'];
+
+        anteprima.add('');
+
+        anteprima.add(
+          'Settore $settoreCorrente',
+        );
+      }
+
+      String nome;
+
+      if (r['gruppo'] != null &&
+          (garaInfo?['modalita_gara'] ?? '').contains(
+            'Box',
+          )) {
+        nome = r['gruppo']['nome'];
+      } else {
+        final pescatore = r['pescatore'];
+
+        nome = '${pescatore['cognome']} ${pescatore['nome']}';
+      }
+
+      anteprima.add(
+        'Posto ${r['posto_numero']} - $nome',
+      );
+    }
+
+    setState(() {
+      anteprimaSorteggio = anteprima;
+      righeSorteggio = dati;
+      sorteggioPresente = true;
+    });
+  }
+
+  List<Widget> _buildPresorteggioVisualizzato() {
+    final widgets = <Widget>[];
+
+    final righe = List<Map<String, dynamic>>.from(
+      presorteggio,
+    );
+
+    righe.sort(
+      (a, b) {
+        final zona = (a['zona'] as int).compareTo(
+          b['zona'] as int,
+        );
+
+        if (zona != 0) {
+          return zona;
+        }
+
+        final settore = (a['settore_numero'] as int).compareTo(
+          b['settore_numero'] as int,
+        );
+
+        if (settore != 0) {
+          return settore;
+        }
+
+        return (a['concorrente_lettera'] as String).compareTo(
+          b['concorrente_lettera'] as String,
+        );
+      },
+    );
+
+    int? zonaCorrente;
+    int? settoreCorrente;
+
+    for (final r in righe) {
+      if (zonaCorrente != r['zona']) {
+        zonaCorrente = r['zona'];
+        settoreCorrente = null;
+
+        widgets.add(
+          const SizedBox(height: 16),
+        );
+
+        widgets.add(
+          Text(
+            'Zona $zonaCorrente',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+        );
+      }
+
+      if (settoreCorrente != r['settore_numero']) {
+        settoreCorrente = r['settore_numero'];
+
+        widgets.add(
+          const SizedBox(height: 8),
+        );
+
+        widgets.add(
+          Text(
+            'Settore $settoreCorrente'
+            '${r['tecnico'] == true ? ' (Tecnico)' : ''}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      }
+
+      String descrizione = '';
+
+      final modalita = garaInfo?['modalita_gara'] ?? '';
+
+      if (modalita.contains('Box')) {
+        descrizione = r['gruppo']?['nome'] ?? '';
+      } else if (r['gruppo'] != null && !modalita.contains('Libera')) {
+        descrizione = '${r['concorrente_lettera']} - '
+            '${r['pescatore']['cognome']} '
+            '${r['pescatore']['nome']} '
+            '(${r['gruppo']['nome']})';
+      } else {
+        final societa = r['pescatore']?['societa']?['nome'] ?? '';
+
+        descrizione = '${r['concorrente_lettera']} - '
+            '${r['pescatore']['cognome']} '
+            '${r['pescatore']['nome']}'
+            '${societa.isNotEmpty ? ' ($societa)' : ''}';
+      }
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(
+            left: 12,
+            top: 2,
+            bottom: 2,
+          ),
+          child: Text(
+            descrizione,
+          ),
+        ),
+      );
+    }
+
+    return widgets;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mostraEstrazioneSettori = settoriDisponibili.length > 1 &&
@@ -844,6 +964,10 @@ class _SorteggiPageState extends State<SorteggiPage> {
                     Text(
                       'Presorteggio: '
                       '${presorteggioPresente ? 'SI' : 'NO'}',
+                    ),
+                    Text(
+                      'Sorteggio: '
+                      '${sorteggioPresente ? 'SI' : 'NO'}',
                     ),
                   ],
                 ),
@@ -1282,6 +1406,15 @@ class _SorteggiPageState extends State<SorteggiPage> {
               onPressed: generaAnteprimaSorteggio,
               child: const Text(
                 'Genera Sorteggio Definitivo',
+              ),
+            ),
+            const SizedBox(
+              height: 8,
+            ),
+            ElevatedButton(
+              onPressed: caricaSorteggio,
+              child: const Text(
+                'Carica Sorteggio',
               ),
             ),
           ],
