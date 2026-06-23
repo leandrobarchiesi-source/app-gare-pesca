@@ -1065,7 +1065,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                     zone[zona] = (zone[zona] ?? 0) + 1;
                   }
                 }
-
                 final nuovaAnteprima = <String>[];
 
                 nuovaAnteprima.add(
@@ -1109,7 +1108,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                         'gruppo': gruppo,
                       };
                     }
-
                     concorrentiZona = gruppi.values.toList();
                   } else {
                     concorrentiZona = iscrizioni.where(
@@ -1154,6 +1152,8 @@ class _SorteggiPageState extends State<SorteggiPage> {
                       final tecnico = settore['tecnico'] == true;
 
                       String nome;
+
+                      final modalita = gara['modalita_gara'] ?? '';
 
                       if (modalita.contains('Box')) {
                         nome = c['gruppo']['nome'];
@@ -1205,25 +1205,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 presorteggioPresente
                     ? 'Riesegui Presorteggio'
                     : 'Esegui Presorteggio',
-              ),
-            ),
-            const SizedBox(
-              height: 12,
-            ),
-            ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Sorteggio Diretto da implementare',
-                    ),
-                  ),
-                );
-              },
-              child: const Text(
-                'Sorteggio Diretto',
               ),
             ),
             const SizedBox(
