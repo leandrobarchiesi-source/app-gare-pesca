@@ -746,17 +746,25 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
       String nome;
 
-      if (r['gruppo'] != null &&
-          (garaInfo?['modalita_gara'] ?? '').contains(
-            'Box',
-          )) {
-        nome = r['gruppo']['nome'];
+      final modalita = garaInfo?['modalita_gara'] ?? '';
+
+      if (modalita.contains('Box')) {
+        nome = r['gruppo']?['nome'] ?? '';
+      } else if (r['gruppo'] != null && !modalita.contains('Libera')) {
+        final pescatore = r['pescatore'];
+
+        nome = '${pescatore['cognome']} '
+            '${pescatore['nome']} '
+            '(${r['gruppo']['nome']})';
       } else {
         final pescatore = r['pescatore'];
 
-        nome = '${pescatore['cognome']} ${pescatore['nome']}';
-      }
+        final societa = pescatore['societa']?['nome'] ?? '';
 
+        nome = '${pescatore['cognome']} '
+            '${pescatore['nome']}'
+            '${societa.isNotEmpty ? ' ($societa)' : ''}';
+      }
       anteprima.add(
         'Posto ${r['posto_numero']} - $nome',
       );
@@ -973,302 +981,310 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 ),
               ),
             ),
-          TextFormField(
-            controller: partecipantiPerSettoreController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Partecipanti per settore',
+          if (garaSelezionata != null) ...[
+            TextFormField(
+              controller: partecipantiPerSettoreController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Partecipanti per settore',
+              ),
             ),
-          ),
-          const SizedBox(
-            height: 16,
-          ),
-          DropdownButtonFormField<String>(
-            value: posizioneTecnico,
-            decoration: const InputDecoration(
-              labelText: 'Posizione settore tecnico',
+            const SizedBox(
+              height: 16,
             ),
-            items: const [
-              DropdownMenuItem(
-                value: 'A',
-                child: Text('A'),
+            DropdownButtonFormField<String>(
+              value: posizioneTecnico,
+              decoration: const InputDecoration(
+                labelText: 'Posizione settore tecnico',
               ),
-              DropdownMenuItem(
-                value: 'B',
-                child: Text('B'),
-              ),
-              DropdownMenuItem(
-                value: 'C',
-                child: Text('C'),
-              ),
-              DropdownMenuItem(
-                value: 'D',
-                child: Text('D'),
-              ),
-              DropdownMenuItem(
-                value: 'E',
-                child: Text('E'),
-              ),
-            ],
-            onChanged: (v) {
-              if (v == null) return;
+              items: const [
+                DropdownMenuItem(
+                  value: 'A',
+                  child: Text('A'),
+                ),
+                DropdownMenuItem(
+                  value: 'B',
+                  child: Text('B'),
+                ),
+                DropdownMenuItem(
+                  value: 'C',
+                  child: Text('C'),
+                ),
+                DropdownMenuItem(
+                  value: 'D',
+                  child: Text('D'),
+                ),
+                DropdownMenuItem(
+                  value: 'E',
+                  child: Text('E'),
+                ),
+              ],
+              onChanged: (v) {
+                if (v == null) return;
 
-              setState(() {
-                posizioneTecnico = v;
-              });
-            },
-          ),
-          const SizedBox(
-            height: 24,
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (garaSelezionata == null) {
-                return;
-              }
-
-              final iscrizioni = await service.getIscrizioniByGara(
-                garaSelezionata!,
-              );
-
-              final gara = gare.firstWhere(
-                (g) => g['id'] == garaSelezionata,
-              );
-
-              final righeDaSalvare = <Map<String, dynamic>>[];
-
-              await service.eliminaPresorteggio(
-                garaSelezionata!,
-              );
-
-              final zone = <int, int>{};
-
-              final numZone = gara['num_zone'] ?? 1;
-
-              if (numZone == 1) {
-                zone[1] = iscrizioni.length;
-              } else {
-                for (final i in iscrizioni) {
-                  final zona = i['zona'];
-
-                  if (zona == null) continue;
-
-                  zone[zona] = (zone[zona] ?? 0) + 1;
+                setState(() {
+                  posizioneTecnico = v;
+                });
+              },
+            ),
+            const SizedBox(
+              height: 24,
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (garaSelezionata == null) {
+                  return;
                 }
-              }
-              final nuovaAnteprima = <String>[];
 
-              nuovaAnteprima.add(
-                'MODALITA: ${gara['modalita_gara']}',
-              );
+                final iscrizioni = await service.getIscrizioniByGara(
+                  garaSelezionata!,
+                );
 
-              final zoneOrdinate = zone.keys.toList()..sort();
+                final gara = gare.firstWhere(
+                  (g) => g['id'] == garaSelezionata,
+                );
 
-              for (final zona in zoneOrdinate) {
-                nuovaAnteprima.add('');
+                final righeDaSalvare = <Map<String, dynamic>>[];
+
+                await service.eliminaPresorteggio(
+                  garaSelezionata!,
+                );
+
+                final zone = <int, int>{};
+
+                final numZone = gara['num_zone'] ?? 1;
+
+                if (numZone == 1) {
+                  zone[1] = iscrizioni.length;
+                } else {
+                  for (final i in iscrizioni) {
+                    final zona = i['zona'];
+
+                    if (zona == null) continue;
+
+                    zone[zona] = (zone[zona] ?? 0) + 1;
+                  }
+                }
+                final nuovaAnteprima = <String>[];
 
                 nuovaAnteprima.add(
-                  'Zona $zona',
+                  'MODALITA: ${gara['modalita_gara']}',
                 );
 
-                final settori = calcolaSettori(
-                  zone[zona]!,
-                  int.parse(
-                    partecipantiPerSettoreController.text,
-                  ),
-                  posizioneTecnico,
-                );
+                final zoneOrdinate = zone.keys.toList()..sort();
 
-                final modalita = gara['modalita_gara'] ?? '';
-
-                List<Map<String, dynamic>> concorrentiZona;
-
-                if (modalita.contains('Box')) {
-                  final gruppi = <String, Map<String, dynamic>>{};
-
-                  for (final i in iscrizioni) {
-                    final gruppo = i['gruppo'];
-
-                    if (gruppo == null) continue;
-
-                    if (gruppo['deleted'] == true) {
-                      continue;
-                    }
-
-                    gruppi[gruppo['id']] = {
-                      'gruppo': gruppo,
-                    };
-                  }
-                  concorrentiZona = gruppi.values.toList();
-                } else {
-                  concorrentiZona = iscrizioni.where(
-                    (i) {
-                      final numZone = gara['num_zone'] ?? 1;
-
-                      if (numZone == 1) {
-                        return true;
-                      }
-
-                      return i['zona'] == zona;
-                    },
-                  ).toList();
-                }
-
-                final settoriCompleti = distribuisciConcorrenti(
-                  concorrentiZona,
-                  settori,
-                );
-
-                int numeroSettore = 1;
-
-                for (final settore in settoriCompleti) {
+                for (final zona in zoneOrdinate) {
                   nuovaAnteprima.add('');
 
-                  final titolo = settore['tecnico']
-                      ? 'Settore $numeroSettore (Tecnico)'
-                      : 'Settore $numeroSettore';
-
                   nuovaAnteprima.add(
-                    titolo,
+                    'Zona $zona',
                   );
 
-                  final concorrenti =
-                      settore['concorrenti'] as List<Map<String, dynamic>>;
+                  final settori = calcolaSettori(
+                    zone[zona]!,
+                    int.parse(
+                      partecipantiPerSettoreController.text,
+                    ),
+                    posizioneTecnico,
+                  );
 
-                  for (int i = 0; i < concorrenti.length; i++) {
-                    final c = concorrenti[i];
+                  final modalita = gara['modalita_gara'] ?? '';
 
-                    final lettera = letteraDaIndice(i);
+                  List<Map<String, dynamic>> concorrentiZona;
 
-                    final tecnico = settore['tecnico'] == true;
+                  if (modalita.contains('Box')) {
+                    final gruppi = <String, Map<String, dynamic>>{};
 
-                    String nome;
+                    for (final i in iscrizioni) {
+                      final gruppo = i['gruppo'];
 
-                    final modalita = gara['modalita_gara'] ?? '';
+                      if (gruppo == null) continue;
 
-                    if (modalita.contains('Box')) {
-                      nome = c['gruppo']['nome'];
-                    } else {
-                      nome =
-                          '${c['pescatore']['cognome']} ${c['pescatore']['nome']}';
+                      if (gruppo['deleted'] == true) {
+                        continue;
+                      }
+
+                      gruppi[gruppo['id']] = {
+                        'gruppo': gruppo,
+                      };
                     }
+                    concorrentiZona = gruppi.values.toList();
+                  } else {
+                    concorrentiZona = iscrizioni.where(
+                      (i) {
+                        final numZone = gara['num_zone'] ?? 1;
 
-                    nuovaAnteprima.add(
-                      '$lettera - $nome',
-                    );
+                        if (numZone == 1) {
+                          return true;
+                        }
 
-                    if (modalita.contains('Box')) {
-                      righeDaSalvare.add({
-                        'gara_id': garaSelezionata,
-                        'zona': zona,
-                        'settore_numero': numeroSettore,
-                        'concorrente_lettera': lettera,
-                        'gruppo_id': c['gruppo']['id'],
-                        'pescatore_id': null,
-                        'tecnico': tecnico,
-                      });
-                    } else {
-                      righeDaSalvare.add({
-                        'gara_id': garaSelezionata,
-                        'zona': zona,
-                        'settore_numero': numeroSettore,
-                        'concorrente_lettera': lettera,
-                        'pescatore_id': c['pescatore']['id'],
-                        'gruppo_id': c['gruppo']?['id'],
-                        'tecnico': tecnico,
-                      });
-                    }
+                        return i['zona'] == zona;
+                      },
+                    ).toList();
                   }
 
-                  numeroSettore++;
+                  final settoriCompleti = distribuisciConcorrenti(
+                    concorrentiZona,
+                    settori,
+                  );
+
+                  int numeroSettore = 1;
+
+                  for (final settore in settoriCompleti) {
+                    nuovaAnteprima.add('');
+
+                    final titolo = settore['tecnico']
+                        ? 'Settore $numeroSettore (Tecnico)'
+                        : 'Settore $numeroSettore';
+
+                    nuovaAnteprima.add(
+                      titolo,
+                    );
+
+                    final concorrenti =
+                        settore['concorrenti'] as List<Map<String, dynamic>>;
+
+                    for (int i = 0; i < concorrenti.length; i++) {
+                      final c = concorrenti[i];
+
+                      final lettera = letteraDaIndice(i);
+
+                      final tecnico = settore['tecnico'] == true;
+
+                      String nome;
+
+                      final modalita = gara['modalita_gara'] ?? '';
+
+                      if (modalita.contains('Box')) {
+                        nome = c['gruppo']['nome'];
+                      } else {
+                        nome =
+                            '${c['pescatore']['cognome']} ${c['pescatore']['nome']}';
+                      }
+
+                      nuovaAnteprima.add(
+                        '$lettera - $nome',
+                      );
+
+                      if (modalita.contains('Box')) {
+                        righeDaSalvare.add({
+                          'gara_id': garaSelezionata,
+                          'zona': zona,
+                          'settore_numero': numeroSettore,
+                          'concorrente_lettera': lettera,
+                          'gruppo_id': c['gruppo']['id'],
+                          'pescatore_id': null,
+                          'tecnico': tecnico,
+                        });
+                      } else {
+                        righeDaSalvare.add({
+                          'gara_id': garaSelezionata,
+                          'zona': zona,
+                          'settore_numero': numeroSettore,
+                          'concorrente_lettera': lettera,
+                          'pescatore_id': c['pescatore']['id'],
+                          'gruppo_id': c['gruppo']?['id'],
+                          'tecnico': tecnico,
+                        });
+                      }
+                    }
+
+                    numeroSettore++;
+                  }
                 }
-              }
 
-              await service.salvaPresorteggio(
-                righeDaSalvare,
-              );
+                await service.salvaPresorteggio(
+                  righeDaSalvare,
+                );
 
-              setState(() {
-                anteprima = nuovaAnteprima;
-              });
-            },
-            child: const Text(
-              'Genera Presorteggio',
+                setState(() {
+                  anteprima = nuovaAnteprima;
+                });
+              },
+              child: Text(
+                presorteggioPresente
+                    ? 'Riesegui Presorteggio'
+                    : 'Esegui Presorteggio',
+              ),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (garaSelezionata == null) {
-                return;
-              }
-
-              final dati = await service.getPresorteggioByGara(
-                garaSelezionata!,
-              );
-
-              final settori = <int>{};
-
-              final lettere = <String>{};
-
-              int? tecnicoNumero;
-
-              for (final r in dati) {
-                settori.add(
-                  r['settore_numero'],
-                );
-
-                lettere.add(
-                  r['concorrente_lettera'],
-                );
-
-                if (r['tecnico'] == true) {
-                  tecnicoNumero = r['settore_numero'];
-                }
-              }
-              final listaSettori = settori.toList()..sort();
-
-              final listaLettere = lettere.toList()..sort();
-
-              for (final s in listaSettori) {
-                controllerSettori.putIfAbsent(
-                  s,
-                  () => TextEditingController(),
-                );
-              }
-
-              for (final l in listaLettere) {
-                controllerConcorrenti.putIfAbsent(
-                  l,
-                  () => TextEditingController(),
-                );
-              }
-
-              setState(() {
-                presorteggio = dati;
-
-                settoriDisponibili = listaSettori;
-
-                lettereDisponibili = listaLettere;
-
-                settoreTecnicoNumero = tecnicoNumero;
-
-                settoreTecnicoLettera =
-                    tecnicoNumero != null ? posizioneTecnico : null;
-              });
-              debugPrint(
-                'Tecnico: $settoreTecnicoNumero - $settoreTecnicoLettera',
-              );
-              debugPrint(
-                'Righe presorteggio: ${dati.length}',
-              );
-            },
-            child: const Text(
-              'Carica Presorteggio',
+            const SizedBox(
+              height: 12,
             ),
-          ),
-          const SizedBox(
-            height: 24,
-          ),
+            if (presorteggioPresente)
+              ElevatedButton(
+                onPressed: () async {
+                  if (garaSelezionata == null) {
+                    return;
+                  }
+
+                  final dati = await service.getPresorteggioByGara(
+                    garaSelezionata!,
+                  );
+
+                  final settori = <int>{};
+
+                  final lettere = <String>{};
+
+                  int? tecnicoNumero;
+
+                  for (final r in dati) {
+                    settori.add(
+                      r['settore_numero'],
+                    );
+
+                    lettere.add(
+                      r['concorrente_lettera'],
+                    );
+
+                    if (r['tecnico'] == true) {
+                      tecnicoNumero = r['settore_numero'];
+                    }
+                  }
+                  final listaSettori = settori.toList()..sort();
+
+                  final listaLettere = lettere.toList()..sort();
+
+                  for (final s in listaSettori) {
+                    controllerSettori.putIfAbsent(
+                      s,
+                      () => TextEditingController(),
+                    );
+                  }
+
+                  for (final l in listaLettere) {
+                    controllerConcorrenti.putIfAbsent(
+                      l,
+                      () => TextEditingController(),
+                    );
+                  }
+
+                  setState(() {
+                    presorteggio = dati;
+
+                    settoriDisponibili = listaSettori;
+
+                    lettereDisponibili = listaLettere;
+
+                    settoreTecnicoNumero = tecnicoNumero;
+
+                    settoreTecnicoLettera =
+                        tecnicoNumero != null ? posizioneTecnico : null;
+                  });
+                  debugPrint(
+                    'Tecnico: $settoreTecnicoNumero - $settoreTecnicoLettera',
+                  );
+                  debugPrint(
+                    'Righe presorteggio: ${dati.length}',
+                  );
+                },
+                child: const Text(
+                  'Carica Presorteggio',
+                ),
+              ),
+            const SizedBox(
+              height: 24,
+            ),
+          ],
           ...anteprima.map(
             (riga) => Padding(
               padding: const EdgeInsets.only(
@@ -1389,7 +1405,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ],
-          if (presorteggio.isNotEmpty) ...[
+          if (presorteggio.isNotEmpty && !sorteggioPresente) ...[
             const SizedBox(
               height: 20,
             ),
@@ -1418,6 +1434,17 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ],
+          if (sorteggioPresente) ...[
+            const SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
+              onPressed: caricaSorteggio,
+              child: const Text(
+                'Carica Sorteggio',
+              ),
+            ),
+          ],
           if (presorteggio.isNotEmpty) ...[
             const SizedBox(
               height: 20,
@@ -1429,47 +1456,47 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
             ..._buildPresorteggioVisualizzato(),
-            if (anteprimaSorteggio.isNotEmpty) ...[
-              const SizedBox(
-                height: 24,
+          ],
+          if (anteprimaSorteggio.isNotEmpty) ...[
+            const SizedBox(
+              height: 24,
+            ),
+            const Divider(),
+            const SizedBox(
+              height: 12,
+            ),
+            const Text(
+              'SORTEGGIO DEFINITIVO',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
-              const Divider(),
-              const SizedBox(
-                height: 12,
-              ),
-              const Text(
-                'SORTEGGIO DEFINITIVO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
+            ),
+            const SizedBox(
+              height: 12,
+            ),
+            ...anteprimaSorteggio.map(
+              (riga) => Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 4,
+                ),
+                child: Text(
+                  riga,
                 ),
               ),
-              const SizedBox(
-                height: 12,
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            ElevatedButton.icon(
+              onPressed: salvaSorteggioDefinitivo,
+              icon: const Icon(
+                Icons.save,
               ),
-              ...anteprimaSorteggio.map(
-                (riga) => Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: 4,
-                  ),
-                  child: Text(
-                    riga,
-                  ),
-                ),
+              label: const Text(
+                'Salva Sorteggio',
               ),
-              const SizedBox(
-                height: 20,
-              ),
-              ElevatedButton.icon(
-                onPressed: salvaSorteggioDefinitivo,
-                icon: const Icon(
-                  Icons.save,
-                ),
-                label: const Text(
-                  'Salva Sorteggio',
-                ),
-              ),
-            ],
+            ),
           ],
         ],
       ),
