@@ -270,6 +270,156 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
+  Future<void> generaSorteggioDiretto() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final iscrizioni = await service.getIscrizioniByGara(
+      garaSelezionata!,
+    );
+
+    final gara = gare.firstWhere(
+      (g) => g['id'] == garaSelezionata,
+    );
+
+    final concorrenti = List<Map<String, dynamic>>.from(
+      iscrizioni,
+    );
+
+    final settori = calcolaSettori(
+      concorrenti.length,
+      int.parse(
+        partecipantiPerSettoreController.text,
+      ),
+      posizioneTecnico,
+    );
+
+    final settoriCompleti = distribuisciConcorrenti(
+      concorrenti,
+      settori,
+    );
+
+    final lettereSettori = <String>[];
+
+    for (int i = 0; i < settoriCompleti.length; i++) {
+      lettereSettori.add(
+        String.fromCharCode(65 + i),
+      );
+    }
+
+    lettereSettori.shuffle();
+
+    final mappaSettori = <int, String>{};
+
+    int indiceLettera = 0;
+
+    for (int i = 0; i < settoriCompleti.length; i++) {
+      final settore = settoriCompleti[i];
+
+      if (settore['tecnico'] == true) {
+        mappaSettori[i + 1] = posizioneTecnico;
+      } else {
+        while (lettereSettori[indiceLettera] == posizioneTecnico &&
+            settoriCompleti.any((s) => s['tecnico'] == true)) {
+          indiceLettera++;
+        }
+
+        mappaSettori[i + 1] = lettereSettori[indiceLettera];
+
+        indiceLettera++;
+      }
+    }
+
+    final righe = <Map<String, dynamic>>[];
+
+    int numeroSettore = 1;
+
+    for (final settore in settoriCompleti) {
+      final lista = settore['concorrenti'] as List<Map<String, dynamic>>;
+
+      final posti = <int>[];
+
+      for (int i = 1; i <= lista.length; i++) {
+        posti.add(i);
+      }
+
+      posti.shuffle();
+
+      for (int i = 0; i < lista.length; i++) {
+        final c = lista[i];
+
+        righe.add({
+          'gara_id': garaSelezionata,
+          'zona': 1,
+          'settore_lettera': mappaSettori[numeroSettore],
+          'posto_numero': posti[i],
+          'pescatore_id': c['pescatore']?['id'],
+          'gruppo_id': c['gruppo']?['id'],
+          'tecnico': settore['tecnico'] == true,
+          'pescatore': c['pescatore'],
+          'gruppo': c['gruppo'],
+        });
+      }
+
+      numeroSettore++;
+    }
+
+    righe.sort(
+      (a, b) {
+        final settore = (a['settore_lettera'] as String).compareTo(
+          b['settore_lettera'] as String,
+        );
+
+        if (settore != 0) {
+          return settore;
+        }
+
+        return (a['posto_numero'] as int).compareTo(
+          b['posto_numero'] as int,
+        );
+      },
+    );
+
+    final anteprima = <String>[];
+
+    String? settoreCorrente;
+
+    for (final r in righe) {
+      if (settoreCorrente != r['settore_lettera']) {
+        settoreCorrente = r['settore_lettera'];
+
+        anteprima.add('');
+
+        anteprima.add(
+          'Settore $settoreCorrente',
+        );
+      }
+
+      String nome;
+
+      final modalita = gara['modalita_gara'] ?? '';
+
+      if (modalita.contains('Box')) {
+        nome = r['gruppo']?['nome'] ?? '';
+      } else {
+        final pescatore = r['pescatore'];
+
+        nome = '${pescatore['cognome']} ${pescatore['nome']}';
+      }
+
+      anteprima.add(
+        'Posto ${r['posto_numero']} - $nome',
+      );
+    }
+
+    setState(() {
+      righeSorteggio = righe;
+
+      anteprimaSorteggio = anteprima;
+    });
+  }
+
   void verificaEstrazioni() {
     final errori = <String>[];
 
@@ -1065,6 +1215,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
                     zone[zona] = (zone[zona] ?? 0) + 1;
                   }
                 }
+
                 final nuovaAnteprima = <String>[];
 
                 nuovaAnteprima.add(
@@ -1108,6 +1259,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
                         'gruppo': gruppo,
                       };
                     }
+
                     concorrentiZona = gruppi.values.toList();
                   } else {
                     concorrentiZona = iscrizioni.where(
@@ -1152,8 +1304,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                       final tecnico = settore['tecnico'] == true;
 
                       String nome;
-
-                      final modalita = gara['modalita_gara'] ?? '';
 
                       if (modalita.contains('Box')) {
                         nome = c['gruppo']['nome'];
@@ -1205,6 +1355,15 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 presorteggioPresente
                     ? 'Riesegui Presorteggio'
                     : 'Esegui Presorteggio',
+              ),
+            ),
+            const SizedBox(
+              height: 12,
+            ),
+            ElevatedButton(
+              onPressed: generaSorteggioDiretto,
+              child: const Text(
+                'Sorteggio Diretto',
               ),
             ),
             const SizedBox(

@@ -270,6 +270,205 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
+  Future<void> generaSorteggioDiretto() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final iscrizioni = await service.getIscrizioniByGara(
+      garaSelezionata!,
+    );
+
+    final gara = gare.firstWhere(
+      (g) => g['id'] == garaSelezionata,
+    );
+
+    final righePresorteggio = <Map<String, dynamic>>[];
+
+    final settoriSet = <int>{};
+
+    final lettereSet = <String>{};
+
+    final zone = <int, int>{};
+
+    final numZone = gara['num_zone'] ?? 1;
+
+    if (numZone == 1) {
+      zone[1] = iscrizioni.length;
+    } else {
+      for (final i in iscrizioni) {
+        final zona = i['zona'];
+
+        if (zona == null) continue;
+
+        zone[zona] = (zone[zona] ?? 0) + 1;
+      }
+    }
+
+    final zoneOrdinate = zone.keys.toList()..sort();
+
+    int? tecnicoNumero;
+
+    for (final zona in zoneOrdinate) {
+      final settori = calcolaSettori(
+        zone[zona]!,
+        int.parse(
+          partecipantiPerSettoreController.text,
+        ),
+        posizioneTecnico,
+      );
+
+      final modalita = gara['modalita_gara'] ?? '';
+
+      List<Map<String, dynamic>> concorrentiZona;
+
+      if (modalita.contains('Box')) {
+        final gruppi = <String, Map<String, dynamic>>{};
+
+        for (final i in iscrizioni) {
+          final gruppo = i['gruppo'];
+
+          if (gruppo == null) continue;
+
+          if (gruppo['deleted'] == true) continue;
+
+          gruppi[gruppo['id']] = {
+            'gruppo': gruppo,
+          };
+        }
+
+        concorrentiZona = gruppi.values.toList();
+      } else {
+        concorrentiZona = iscrizioni.where(
+          (i) {
+            if (numZone == 1) {
+              return true;
+            }
+
+            return i['zona'] == zona;
+          },
+        ).toList();
+      }
+
+      final settoriCompleti = distribuisciConcorrenti(
+        concorrentiZona,
+        settori,
+      );
+
+      int numeroSettore = 1;
+
+      for (final settore in settoriCompleti) {
+        settoriSet.add(
+          numeroSettore,
+        );
+
+        if (settore['tecnico'] == true) {
+          tecnicoNumero = numeroSettore;
+        }
+
+        final concorrenti =
+            settore['concorrenti'] as List<Map<String, dynamic>>;
+
+        for (int i = 0; i < concorrenti.length; i++) {
+          final c = concorrenti[i];
+
+          final lettera = letteraDaIndice(i);
+
+          lettereSet.add(
+            lettera,
+          );
+
+          righePresorteggio.add({
+            'gara_id': garaSelezionata,
+            'zona': zona,
+            'settore_numero': numeroSettore,
+            'concorrente_lettera': lettera,
+            'pescatore_id': c['pescatore']?['id'],
+            'gruppo_id': c['gruppo']?['id'],
+            'tecnico': settore['tecnico'] == true,
+            'pescatore': c['pescatore'],
+            'gruppo': c['gruppo'],
+          });
+        }
+
+        numeroSettore++;
+      }
+    }
+
+    final listaSettori = settoriSet.toList()..sort();
+
+    final listaLettere = lettereSet.toList()..sort();
+
+    for (final s in listaSettori) {
+      controllerSettori.putIfAbsent(
+        s,
+        () => TextEditingController(),
+      );
+    }
+
+    for (final l in listaLettere) {
+      controllerConcorrenti.putIfAbsent(
+        l,
+        () => TextEditingController(),
+      );
+    }
+
+    final lettereSettori = <String>[];
+
+    for (int i = 0; i < listaSettori.length; i++) {
+      lettereSettori.add(
+        String.fromCharCode(65 + i),
+      );
+    }
+
+    lettereSettori.shuffle();
+
+    int indiceLettera = 0;
+
+    for (final s in listaSettori) {
+      if (s == tecnicoNumero) {
+        controllerSettori[s]!.text = posizioneTecnico;
+        continue;
+      }
+
+      while (tecnicoNumero != null &&
+          indiceLettera < lettereSettori.length &&
+          lettereSettori[indiceLettera] == posizioneTecnico) {
+        indiceLettera++;
+      }
+
+      controllerSettori[s]!.text = lettereSettori[indiceLettera];
+
+      indiceLettera++;
+    }
+
+    final numeri = <int>[];
+
+    for (int i = 1; i <= listaLettere.length; i++) {
+      numeri.add(i);
+    }
+
+    numeri.shuffle();
+
+    for (int i = 0; i < listaLettere.length; i++) {
+      controllerConcorrenti[listaLettere[i]]!.text = numeri[i].toString();
+    }
+
+    setState(() {
+      presorteggio = righePresorteggio;
+
+      settoriDisponibili = listaSettori;
+
+      lettereDisponibili = listaLettere;
+
+      settoreTecnicoNumero = tecnicoNumero;
+
+      settoreTecnicoLettera = tecnicoNumero != null ? posizioneTecnico : null;
+    });
+
+    generaAnteprimaSorteggio();
+  }
+
   void verificaEstrazioni() {
     final errori = <String>[];
 
@@ -1211,17 +1410,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
               height: 12,
             ),
             ElevatedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Sorteggio Diretto da implementare',
-                    ),
-                  ),
-                );
-              },
+              onPressed: generaSorteggioDiretto,
               child: const Text(
                 'Sorteggio Diretto',
               ),
