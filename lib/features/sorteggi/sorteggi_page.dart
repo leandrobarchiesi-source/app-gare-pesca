@@ -38,6 +38,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
   String? settoreTecnicoLettera;
 
   bool presorteggioPresente = false;
+  bool sorteggioDiretto = false;
 
   String? garaSelezionata;
 
@@ -46,6 +47,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
   );
 
   String posizioneTecnico = 'B';
+  bool settoreUnico = false;
 
   List<Map<String, dynamic>> calcolaSettori(
     int concorrenti,
@@ -271,6 +273,11 @@ class _SorteggiPageState extends State<SorteggiPage> {
   }
 
   Future<void> generaSorteggioDiretto() async {
+    if (settoreUnico) {
+      await generaSettoreUnico();
+      return;
+    }
+
     if (garaSelezionata == null) {
       return;
     }
@@ -464,9 +471,90 @@ class _SorteggiPageState extends State<SorteggiPage> {
       settoreTecnicoNumero = tecnicoNumero;
 
       settoreTecnicoLettera = tecnicoNumero != null ? posizioneTecnico : null;
+
+      sorteggioDiretto = true;
     });
 
     generaAnteprimaSorteggio();
+  }
+
+  Future<void> generaSettoreUnico() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final iscrizioni = await service.getIscrizioniByGara(
+      garaSelezionata!,
+    );
+
+    final lista = List<Map<String, dynamic>>.from(
+      iscrizioni,
+    );
+
+    lista.shuffle();
+
+    final righe = <Map<String, dynamic>>[];
+
+    final anteprima = <String>[];
+
+    anteprima.add('');
+
+    anteprima.add('Zona 1');
+
+    anteprima.add('');
+
+    anteprima.add('Settore A');
+
+    for (int i = 0; i < lista.length; i++) {
+      final c = lista[i];
+
+      final posto = i + 1;
+
+      righe.add({
+        'gara_id': garaSelezionata,
+        'zona': 1,
+        'settore_lettera': 'A',
+        'posto_numero': posto,
+        'pescatore_id': c['pescatore']?['id'],
+        'gruppo_id': c['gruppo']?['id'],
+        'tecnico': false,
+        'pescatore': c['pescatore'],
+        'gruppo': c['gruppo'],
+      });
+
+      String nome;
+
+      final modalita = garaInfo?['modalita_gara'] ?? '';
+
+      if (modalita.contains('Box')) {
+        nome = c['gruppo']?['nome'] ?? '';
+      } else {
+        final pescatore = c['pescatore'];
+
+        final gruppo = c['gruppo'];
+
+        final societa = pescatore?['societa']?['nome'] ?? '';
+
+        nome = '${pescatore['cognome']} '
+            '${pescatore['nome']}';
+
+        if (gruppo != null) {
+          nome += ' (${gruppo['nome']})';
+        } else if (societa.isNotEmpty) {
+          nome += ' ($societa)';
+        }
+      }
+      anteprima.add(
+        'Posto $posto - $nome',
+      );
+    }
+
+    setState(() {
+      righeSorteggio = righe;
+      anteprimaSorteggio = anteprima;
+
+      sorteggioDiretto = true;
+    });
   }
 
   void verificaEstrazioni() {
@@ -976,6 +1064,82 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
+  Future<void> eliminaPresorteggio() async {
+    if (garaSelezionata == null) return;
+
+    final conferma = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Elimina Presorteggio'),
+        content: const Text(
+          'Eliminare il presorteggio salvato?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Si'),
+          ),
+        ],
+      ),
+    );
+
+    if (conferma != true) return;
+
+    await service.eliminaPresorteggio(
+      garaSelezionata!,
+    );
+
+    setState(() {
+      presorteggio = [];
+      anteprima = [];
+      presorteggioPresente = false;
+    });
+
+    await aggiornaRiepilogo();
+  }
+
+  Future<void> eliminaSorteggio() async {
+    if (garaSelezionata == null) return;
+
+    final conferma = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Elimina Sorteggio'),
+        content: const Text(
+          'Eliminare il sorteggio definitivo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Si'),
+          ),
+        ],
+      ),
+    );
+
+    if (conferma != true) return;
+
+    await service.eliminaSorteggio(
+      garaSelezionata!,
+    );
+
+    setState(() {
+      anteprimaSorteggio = [];
+      righeSorteggio = [];
+      sorteggioPresente = false;
+    });
+
+    await aggiornaRiepilogo();
+  }
+
   List<Widget> _buildPresorteggioVisualizzato() {
     final widgets = <Widget>[];
 
@@ -1181,60 +1345,85 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           if (garaSelezionata != null) ...[
-            TextFormField(
-              controller: partecipantiPerSettoreController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Partecipanti per settore',
+            if (!settoreUnico) ...[
+              TextFormField(
+                controller: partecipantiPerSettoreController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Partecipanti per settore',
+                ),
               ),
-            ),
+              const SizedBox(
+                height: 16,
+              ),
+            ],
             const SizedBox(
-              height: 16,
+              height: 12,
             ),
-            DropdownButtonFormField<String>(
-              value: posizioneTecnico,
-              decoration: const InputDecoration(
-                labelText: 'Posizione settore tecnico',
+            CheckboxListTile(
+              title: const Text(
+                'Settore unico',
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: 'A',
-                  child: Text('A'),
-                ),
-                DropdownMenuItem(
-                  value: 'B',
-                  child: Text('B'),
-                ),
-                DropdownMenuItem(
-                  value: 'C',
-                  child: Text('C'),
-                ),
-                DropdownMenuItem(
-                  value: 'D',
-                  child: Text('D'),
-                ),
-                DropdownMenuItem(
-                  value: 'E',
-                  child: Text('E'),
-                ),
-              ],
+              value: settoreUnico,
               onChanged: (v) {
-                if (v == null) return;
-
                 setState(() {
-                  posizioneTecnico = v;
+                  settoreUnico = v ?? false;
                 });
               },
             ),
             const SizedBox(
-              height: 24,
+              height: 16,
             ),
+            if (!settoreUnico) ...[
+              DropdownButtonFormField<String>(
+                value: posizioneTecnico,
+                decoration: const InputDecoration(
+                  labelText: 'Posizione settore tecnico',
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'A',
+                    child: Text('A'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'B',
+                    child: Text('B'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'C',
+                    child: Text('C'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'D',
+                    child: Text('D'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'E',
+                    child: Text('E'),
+                  ),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+
+                  setState(() {
+                    posizioneTecnico = v;
+                  });
+                },
+              ),
+              const SizedBox(
+                height: 24,
+              ),
+            ],
             ElevatedButton(
               onPressed: () async {
+                if (settoreUnico) {
+                  generaSorteggioDiretto();
+                  return;
+                }
                 if (garaSelezionata == null) {
                   return;
                 }
-
+                sorteggioDiretto = false;
                 final iscrizioni = await service.getIscrizioniByGara(
                   garaSelezionata!,
                 );
@@ -1357,10 +1546,21 @@ class _SorteggiPageState extends State<SorteggiPage> {
                       if (modalita.contains('Box')) {
                         nome = c['gruppo']['nome'];
                       } else {
-                        nome =
-                            '${c['pescatore']['cognome']} ${c['pescatore']['nome']}';
-                      }
+                        final pescatore = c['pescatore'];
 
+                        final gruppo = c['gruppo'];
+
+                        final societa = pescatore['societa']?['nome'] ?? '';
+
+                        nome = '${pescatore['cognome']} '
+                            '${pescatore['nome']}';
+
+                        if (gruppo != null) {
+                          nome += ' (${gruppo['nome']})';
+                        } else if (societa.isNotEmpty) {
+                          nome += ' ($societa)';
+                        }
+                      }
                       nuovaAnteprima.add(
                         '$lettera - $nome',
                       );
@@ -1396,16 +1596,85 @@ class _SorteggiPageState extends State<SorteggiPage> {
                   righeDaSalvare,
                 );
 
+                final dati = await service.getPresorteggioByGara(
+                  garaSelezionata!,
+                );
+
+                final settori = <int>{};
+
+                final lettere = <String>{};
+
+                int? tecnicoNumero;
+
+                for (final r in dati) {
+                  settori.add(
+                    r['settore_numero'],
+                  );
+
+                  lettere.add(
+                    r['concorrente_lettera'],
+                  );
+
+                  if (r['tecnico'] == true) {
+                    tecnicoNumero = r['settore_numero'];
+                  }
+                }
+
+                final listaSettori = settori.toList()..sort();
+
+                final listaLettere = lettere.toList()..sort();
+
+                for (final s in listaSettori) {
+                  controllerSettori.putIfAbsent(
+                    s,
+                    () => TextEditingController(),
+                  );
+                }
+
+                for (final l in listaLettere) {
+                  controllerConcorrenti.putIfAbsent(
+                    l,
+                    () => TextEditingController(),
+                  );
+                }
+
+                await aggiornaRiepilogo();
+
                 setState(() {
                   anteprima = nuovaAnteprima;
+
+                  presorteggio = dati;
+
+                  settoriDisponibili = listaSettori;
+
+                  lettereDisponibili = listaLettere;
+
+                  settoreTecnicoNumero = tecnicoNumero;
+
+                  settoreTecnicoLettera =
+                      tecnicoNumero != null ? posizioneTecnico : null;
                 });
               },
               child: Text(
-                presorteggioPresente
-                    ? 'Riesegui Presorteggio'
-                    : 'Esegui Presorteggio',
+                settoreUnico
+                    ? 'Genera Settore Unico'
+                    : presorteggioPresente
+                        ? 'Riesegui Presorteggio'
+                        : 'Esegui Presorteggio',
               ),
             ),
+            if (presorteggioPresente) ...[
+              const SizedBox(
+                height: 12,
+              ),
+              ElevatedButton.icon(
+                onPressed: eliminaPresorteggio,
+                icon: const Icon(Icons.delete),
+                label: const Text(
+                  'Elimina Presorteggio',
+                ),
+              ),
+            ],
             const SizedBox(
               height: 12,
             ),
@@ -1503,7 +1772,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ),
-          if (mostraEstrazioneSettori) ...[
+          if (mostraEstrazioneSettori && !sorteggioDiretto) ...[
             const SizedBox(
               height: 24,
             ),
@@ -1573,7 +1842,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
               },
             ),
           ],
-          if (lettereDisponibili.isNotEmpty) ...[
+          if (lettereDisponibili.isNotEmpty && !sorteggioDiretto) ...[
             const SizedBox(
               height: 24,
             ),
@@ -1613,7 +1882,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ],
-          if (presorteggio.isNotEmpty && !sorteggioPresente) ...[
+          if (presorteggio.isNotEmpty &&
+              !sorteggioPresente &&
+              !sorteggioDiretto) ...[
             const SizedBox(
               height: 20,
             ),
@@ -1632,15 +1903,17 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 'Genera Sorteggio Definitivo',
               ),
             ),
-            const SizedBox(
-              height: 8,
-            ),
-            ElevatedButton(
-              onPressed: caricaSorteggio,
-              child: const Text(
-                'Carica Sorteggio',
+            if (sorteggioPresente) ...[
+              const SizedBox(
+                height: 20,
               ),
-            ),
+              ElevatedButton(
+                onPressed: caricaSorteggio,
+                child: const Text(
+                  'Carica Sorteggio',
+                ),
+              ),
+            ],
           ],
           if (sorteggioPresente) ...[
             const SizedBox(
@@ -1652,8 +1925,16 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 'Carica Sorteggio',
               ),
             ),
+            const SizedBox(
+              height: 8,
+            ),
+            ElevatedButton.icon(
+              onPressed: eliminaSorteggio,
+              icon: const Icon(Icons.delete),
+              label: const Text('Elimina Sorteggio'),
+            ),
           ],
-          if (presorteggio.isNotEmpty) ...[
+          if (presorteggio.isNotEmpty && !sorteggioDiretto) ...[
             const SizedBox(
               height: 20,
             ),

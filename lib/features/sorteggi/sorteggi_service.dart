@@ -29,10 +29,22 @@ class SorteggiService {
     final data = await supabase
         .from('iscrizioni')
         .select('''
-          *,
-          pescatore:pescatori(*),
-          gruppo:gruppi(*)
-        ''')
+  *,
+  pescatore:pescatori(
+    *,
+    societa:societa_id(
+      id,
+      nome
+    )
+  ),
+  gruppo:gruppi(
+    *,
+    societa:societa_id(
+      id,
+      nome
+    )
+  )
+''')
         .eq(
           'gara_id',
           garaId,
