@@ -233,7 +233,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
     int squadreOCoppie = 0;
 
-    if (modalita.contains('Box')) {
+    if (modalita.contains('Box') ||
+        modalita.contains('Squadre') ||
+        modalita.contains('Coppie')) {
       final gruppi = <String>{};
 
       for (final i in iscrizioni) {
@@ -248,7 +250,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
       squadreOCoppie = gruppi.length;
     }
-
     final settori = <String>{};
 
     for (final p in presorteggi) {
@@ -1283,6 +1284,19 @@ class _SorteggiPageState extends State<SorteggiPage> {
             onChanged: (v) async {
               setState(() {
                 garaSelezionata = v;
+
+                anteprima = [];
+                anteprimaSorteggio = [];
+                presorteggio = [];
+
+                settoriDisponibili = [];
+                lettereDisponibili = [];
+
+                righeSorteggio = [];
+
+                sorteggioDiretto = false;
+                presorteggioPresente = false;
+                sorteggioPresente = false;
               });
 
               await aggiornaRiepilogo();
@@ -1663,31 +1677,10 @@ class _SorteggiPageState extends State<SorteggiPage> {
                         : 'Esegui Presorteggio',
               ),
             ),
-            if (presorteggioPresente) ...[
+            if (presorteggioPresente && presorteggio.isEmpty) ...[
               const SizedBox(
                 height: 12,
               ),
-              ElevatedButton.icon(
-                onPressed: eliminaPresorteggio,
-                icon: const Icon(Icons.delete),
-                label: const Text(
-                  'Elimina Presorteggio',
-                ),
-              ),
-            ],
-            const SizedBox(
-              height: 12,
-            ),
-            ElevatedButton(
-              onPressed: generaSorteggioDiretto,
-              child: const Text(
-                'Sorteggio Diretto',
-              ),
-            ),
-            const SizedBox(
-              height: 12,
-            ),
-            if (presorteggioPresente)
               ElevatedButton(
                 onPressed: () async {
                   if (garaSelezionata == null) {
@@ -1699,7 +1692,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                   );
 
                   final settori = <int>{};
-
                   final lettere = <String>{};
 
                   int? tecnicoNumero;
@@ -1717,6 +1709,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
                       tecnicoNumero = r['settore_numero'];
                     }
                   }
+
                   final listaSettori = settori.toList()..sort();
 
                   final listaLettere = lettere.toList()..sort();
@@ -1747,17 +1740,26 @@ class _SorteggiPageState extends State<SorteggiPage> {
                     settoreTecnicoLettera =
                         tecnicoNumero != null ? posizioneTecnico : null;
                   });
-                  debugPrint(
-                    'Tecnico: $settoreTecnicoNumero - $settoreTecnicoLettera',
-                  );
-                  debugPrint(
-                    'Righe presorteggio: ${dati.length}',
-                  );
                 },
                 child: const Text(
                   'Carica Presorteggio',
                 ),
               ),
+              if (presorteggioPresente) ...[
+                const SizedBox(
+                  height: 12,
+                ),
+                ElevatedButton.icon(
+                  onPressed: eliminaPresorteggio,
+                  icon: const Icon(
+                    Icons.delete,
+                  ),
+                  label: const Text(
+                    'Elimina Presorteggio',
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(
               height: 24,
             ),
@@ -1903,17 +1905,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 'Genera Sorteggio Definitivo',
               ),
             ),
-            if (sorteggioPresente) ...[
-              const SizedBox(
-                height: 20,
-              ),
-              ElevatedButton(
-                onPressed: caricaSorteggio,
-                child: const Text(
-                  'Carica Sorteggio',
-                ),
-              ),
-            ],
           ],
           if (sorteggioPresente) ...[
             const SizedBox(
@@ -1938,13 +1929,23 @@ class _SorteggiPageState extends State<SorteggiPage> {
             const SizedBox(
               height: 20,
             ),
-            const Text(
-              'Presorteggio salvato',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
+            ExpansionTile(
+              title: const Text(
+                'Presorteggio',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildPresorteggioVisualizzato(),
+                  ),
+                ),
+              ],
             ),
-            ..._buildPresorteggioVisualizzato(),
           ],
           if (anteprimaSorteggio.isNotEmpty) ...[
             const SizedBox(
