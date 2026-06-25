@@ -1065,6 +1065,57 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
+  Future<void> caricaPresorteggio() async {
+    if (garaSelezionata == null) {
+      return;
+    }
+
+    final dati = await service.getPresorteggioByGara(
+      garaSelezionata!,
+    );
+
+    final settori = <int>{};
+    final lettere = <String>{};
+
+    int? tecnicoNumero;
+
+    for (final r in dati) {
+      settori.add(r['settore_numero']);
+      lettere.add(r['concorrente_lettera']);
+
+      if (r['tecnico'] == true) {
+        tecnicoNumero = r['settore_numero'];
+      }
+    }
+
+    final listaSettori = settori.toList()..sort();
+    final listaLettere = lettere.toList()..sort();
+
+    for (final s in listaSettori) {
+      controllerSettori.putIfAbsent(
+        s,
+        () => TextEditingController(),
+      );
+    }
+
+    for (final l in listaLettere) {
+      controllerConcorrenti.putIfAbsent(
+        l,
+        () => TextEditingController(),
+      );
+    }
+
+    setState(() {
+      presorteggio = dati;
+
+      settoriDisponibili = listaSettori;
+      lettereDisponibili = listaLettere;
+
+      settoreTecnicoNumero = tecnicoNumero;
+      settoreTecnicoLettera = tecnicoNumero != null ? posizioneTecnico : null;
+    });
+  }
+
   Future<void> eliminaPresorteggio() async {
     if (garaSelezionata == null) return;
 
@@ -1101,6 +1152,11 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
 
     await aggiornaRiepilogo();
+    if (sorteggioPresente) {
+      await caricaSorteggio();
+    } else if (presorteggioPresente) {
+      await caricaPresorteggio();
+    }
   }
 
   Future<void> eliminaSorteggio() async {
@@ -1300,6 +1356,13 @@ class _SorteggiPageState extends State<SorteggiPage> {
               });
 
               await aggiornaRiepilogo();
+              if (sorteggioPresente) {
+                await caricaSorteggio();
+              }
+
+              if (presorteggioPresente) {
+                await caricaPresorteggio();
+              }
             },
           ),
           const SizedBox(
@@ -1677,103 +1740,44 @@ class _SorteggiPageState extends State<SorteggiPage> {
                         : 'Esegui Presorteggio',
               ),
             ),
-            if (presorteggioPresente && presorteggio.isEmpty) ...[
+            if (presorteggioPresente) ...[
               const SizedBox(
                 height: 12,
               ),
-              ElevatedButton(
-                onPressed: () async {
-                  if (garaSelezionata == null) {
-                    return;
-                  }
-
-                  final dati = await service.getPresorteggioByGara(
-                    garaSelezionata!,
-                  );
-
-                  final settori = <int>{};
-                  final lettere = <String>{};
-
-                  int? tecnicoNumero;
-
-                  for (final r in dati) {
-                    settori.add(
-                      r['settore_numero'],
-                    );
-
-                    lettere.add(
-                      r['concorrente_lettera'],
-                    );
-
-                    if (r['tecnico'] == true) {
-                      tecnicoNumero = r['settore_numero'];
-                    }
-                  }
-
-                  final listaSettori = settori.toList()..sort();
-
-                  final listaLettere = lettere.toList()..sort();
-
-                  for (final s in listaSettori) {
-                    controllerSettori.putIfAbsent(
-                      s,
-                      () => TextEditingController(),
-                    );
-                  }
-
-                  for (final l in listaLettere) {
-                    controllerConcorrenti.putIfAbsent(
-                      l,
-                      () => TextEditingController(),
-                    );
-                  }
-
-                  setState(() {
-                    presorteggio = dati;
-
-                    settoriDisponibili = listaSettori;
-
-                    lettereDisponibili = listaLettere;
-
-                    settoreTecnicoNumero = tecnicoNumero;
-
-                    settoreTecnicoLettera =
-                        tecnicoNumero != null ? posizioneTecnico : null;
-                  });
-                },
-                child: const Text(
-                  'Carica Presorteggio',
+              ElevatedButton.icon(
+                onPressed: eliminaPresorteggio,
+                icon: const Icon(Icons.delete),
+                label: const Text(
+                  'Elimina Presorteggio',
                 ),
               ),
-              if (presorteggioPresente) ...[
-                const SizedBox(
-                  height: 12,
-                ),
-                ElevatedButton.icon(
-                  onPressed: eliminaPresorteggio,
-                  icon: const Icon(
-                    Icons.delete,
-                  ),
-                  label: const Text(
-                    'Elimina Presorteggio',
-                  ),
-                ),
-              ],
             ],
             const SizedBox(
               height: 24,
             ),
           ],
-          ...anteprima.map(
-            (riga) => Padding(
-              padding: const EdgeInsets.only(
-                bottom: 4,
-              ),
-              child: Text(
-                riga,
-              ),
+          if (presorteggio.isNotEmpty && !sorteggioDiretto) ...[
+            const SizedBox(
+              height: 20,
             ),
-          ),
+            ExpansionTile(
+              title: const Text(
+                'Presorteggio',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildPresorteggioVisualizzato(),
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (mostraEstrazioneSettori && !sorteggioDiretto) ...[
             const SizedBox(
               height: 24,
@@ -1910,28 +1914,20 @@ class _SorteggiPageState extends State<SorteggiPage> {
             const SizedBox(
               height: 20,
             ),
-            ElevatedButton(
-              onPressed: caricaSorteggio,
-              child: const Text(
-                'Carica Sorteggio',
-              ),
-            ),
-            const SizedBox(
-              height: 8,
-            ),
             ElevatedButton.icon(
               onPressed: eliminaSorteggio,
               icon: const Icon(Icons.delete),
               label: const Text('Elimina Sorteggio'),
             ),
           ],
-          if (presorteggio.isNotEmpty && !sorteggioDiretto) ...[
+          if (anteprimaSorteggio.isNotEmpty) ...[
             const SizedBox(
               height: 20,
             ),
             ExpansionTile(
+              initiallyExpanded: true,
               title: const Text(
-                'Presorteggio',
+                'Sorteggio Definitivo',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                 ),
@@ -1941,51 +1937,31 @@ class _SorteggiPageState extends State<SorteggiPage> {
                   padding: const EdgeInsets.all(8),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _buildPresorteggioVisualizzato(),
+                    children: [
+                      ...anteprimaSorteggio.map(
+                        (riga) => Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: 4,
+                          ),
+                          child: Text(riga),
+                        ),
+                      ),
+                      if (!sorteggioPresente) ...[
+                        const SizedBox(
+                          height: 20,
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: salvaSorteggioDefinitivo,
+                          icon: const Icon(Icons.save),
+                          label: const Text(
+                            'Salva Sorteggio',
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
-            ),
-          ],
-          if (anteprimaSorteggio.isNotEmpty) ...[
-            const SizedBox(
-              height: 24,
-            ),
-            const Divider(),
-            const SizedBox(
-              height: 12,
-            ),
-            const Text(
-              'SORTEGGIO DEFINITIVO',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(
-              height: 12,
-            ),
-            ...anteprimaSorteggio.map(
-              (riga) => Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 4,
-                ),
-                child: Text(
-                  riga,
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            ElevatedButton.icon(
-              onPressed: salvaSorteggioDefinitivo,
-              icon: const Icon(
-                Icons.save,
-              ),
-              label: const Text(
-                'Salva Sorteggio',
-              ),
             ),
           ],
         ],
