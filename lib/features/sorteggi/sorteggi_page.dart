@@ -39,6 +39,7 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
   bool presorteggioPresente = false;
   bool sorteggioDiretto = false;
+  bool modificaPresorteggio = false;
 
   String? garaSelezionata;
 
@@ -1105,6 +1106,8 @@ class _SorteggiPageState extends State<SorteggiPage> {
       );
     }
 
+    await caricaSorteggio();
+
     setState(() {
       presorteggio = dati;
 
@@ -1113,6 +1116,8 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
       settoreTecnicoNumero = tecnicoNumero;
       settoreTecnicoLettera = tecnicoNumero != null ? posizioneTecnico : null;
+
+      modificaPresorteggio = false;
     });
   }
 
@@ -1745,6 +1750,18 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 height: 12,
               ),
               ElevatedButton.icon(
+                onPressed: preparaRieseguiPresorteggio,
+                icon: const Icon(Icons.edit),
+                label: const Text(
+                  'Cambia Abbinamenti',
+                ),
+              ),
+            ],
+            if (presorteggioPresente) ...[
+              const SizedBox(
+                height: 12,
+              ),
+              ElevatedButton.icon(
                 onPressed: eliminaPresorteggio,
                 icon: const Icon(Icons.delete),
                 label: const Text(
@@ -1778,7 +1795,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ],
             ),
           ],
-          if (mostraEstrazioneSettori && !sorteggioDiretto) ...[
+          if (modificaPresorteggio &&
+              mostraEstrazioneSettori &&
+              !sorteggioDiretto) ...[
             const SizedBox(
               height: 24,
             ),
@@ -1848,7 +1867,9 @@ class _SorteggiPageState extends State<SorteggiPage> {
               },
             ),
           ],
-          if (lettereDisponibili.isNotEmpty && !sorteggioDiretto) ...[
+          if (modificaPresorteggio &&
+              lettereDisponibili.isNotEmpty &&
+              !sorteggioDiretto) ...[
             const SizedBox(
               height: 24,
             ),
