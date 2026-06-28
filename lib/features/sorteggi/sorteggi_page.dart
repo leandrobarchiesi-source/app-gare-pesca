@@ -559,35 +559,17 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
-  void verificaEstrazioni() {
-    final errori = <String>[];
+void verificaEstrazioni() {
+  final errori = <String>[];
 
-    if (settoriDisponibili.length == 2 && settoreTecnicoNumero != null) {
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text(
-            'Verifica OK',
-          ),
-          content: const Text(
-            '✓ Estrazioni valide',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+  final estrazioneSettoriNecessaria =
+      !(settoriDisponibili.length == 1 ||
+          (settoriDisponibili.length == 2 &&
+              settoreTecnicoNumero != null));
 
-      return;
-    }
+  final lettereInserite = <String>{};
 
-    final lettereInserite = <String>{};
-
+  if (estrazioneSettoriNecessaria) {
     for (final s in settoriDisponibili) {
       if (s == settoreTecnicoNumero) {
         lettereInserite.add(
@@ -595,7 +577,10 @@ class _SorteggiPageState extends State<SorteggiPage> {
         );
         continue;
       }
-      final valore = controllerSettori[s]!.text.trim().toUpperCase();
+
+      final valore = controllerSettori[s]!.text
+          .trim()
+          .toUpperCase();
 
       if (valore.isEmpty) {
         errori.add(
@@ -630,76 +615,82 @@ class _SorteggiPageState extends State<SorteggiPage> {
         );
       }
     }
+  }
 
-    final numeriInseriti = <int>{};
+  final numeriInseriti = <int>{};
 
-    for (final l in lettereDisponibili) {
-      final testo = controllerConcorrenti[l]!.text.trim();
+  for (final l in lettereDisponibili) {
+    final testo = controllerConcorrenti[l]!.text.trim();
 
-      if (testo.isEmpty) {
-        errori.add(
-          'Concorrente $l non compilato',
-        );
-        continue;
-      }
+    if (testo.isEmpty) {
+      errori.add(
+        'Concorrente $l non compilato',
+      );
+      continue;
+    }
 
-      final numero = int.tryParse(testo);
+    final numero = int.tryParse(
+      testo,
+    );
 
-      if (numero == null) {
-        errori.add(
-          '$l contiene un valore non valido',
-        );
-        continue;
-      }
+    if (numero == null) {
+      errori.add(
+        '$l contiene un valore non valido',
+      );
+      continue;
+    }
 
-      if (numeriInseriti.contains(
-        numero,
-      )) {
-        errori.add(
-          'Numero $numero duplicato',
-        );
-      }
-
-      numeriInseriti.add(
-        numero,
+    if (numeriInseriti.contains(
+      numero,
+    )) {
+      errori.add(
+        'Numero $numero duplicato',
       );
     }
 
-    for (int i = 1; i <= lettereDisponibili.length; i++) {
-      if (!numeriInseriti.contains(
-        i,
-      )) {
-        errori.add(
-          'Manca numero $i',
-        );
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(
-          errori.isEmpty ? 'Verifica OK' : 'Errori rilevati',
-        ),
-        content: Text(
-          errori.isEmpty ? '✓ Estrazioni valide' : errori.join('\n'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(
-                context,
-              );
-            },
-            child: const Text(
-              'OK',
-            ),
-          ),
-        ],
-      ),
+    numeriInseriti.add(
+      numero,
     );
   }
 
+  for (int i = 1; i <= lettereDisponibili.length; i++) {
+    if (!numeriInseriti.contains(
+      i,
+    )) {
+      errori.add(
+        'Manca numero $i',
+      );
+    }
+  }
+
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Text(
+        errori.isEmpty
+            ? 'Verifica OK'
+            : 'Errori rilevati',
+      ),
+      content: Text(
+        errori.isEmpty
+            ? '✓ Estrazioni valide'
+            : errori.join('\n'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(
+              context,
+            );
+          },
+          child: const Text(
+            'OK',
+          ),
+        ),
+      ],
+    ),
+  );
+}
   void generaAnteprimaSorteggio() {
     final mappaSettori = <int, String>{};
 
@@ -1121,6 +1112,61 @@ class _SorteggiPageState extends State<SorteggiPage> {
     });
   }
 
+  Future<void> preparaRieseguiPresorteggio() async {
+  if (garaSelezionata == null) {
+    return;
+  }
+
+  final dati = await service.getPresorteggioByGara(
+    garaSelezionata!,
+  );
+
+  final settori = <int>{};
+  final lettere = <String>{};
+
+  int? tecnicoNumero;
+
+  for (final r in dati) {
+    settori.add(r['settore_numero']);
+    lettere.add(r['concorrente_lettera']);
+
+    if (r['tecnico'] == true) {
+      tecnicoNumero = r['settore_numero'];
+    }
+  }
+
+  final listaSettori = settori.toList()..sort();
+  final listaLettere = lettere.toList()..sort();
+
+  for (final s in listaSettori) {
+    controllerSettori.putIfAbsent(
+      s,
+      () => TextEditingController(),
+    );
+  }
+
+  for (final l in listaLettere) {
+    controllerConcorrenti.putIfAbsent(
+      l,
+      () => TextEditingController(),
+    );
+  }
+
+  setState(() {
+    presorteggio = dati;
+
+    settoriDisponibili = listaSettori;
+    lettereDisponibili = listaLettere;
+
+    settoreTecnicoNumero = tecnicoNumero;
+    settoreTecnicoLettera =
+        tecnicoNumero != null ? posizioneTecnico : null;
+
+    modificaPresorteggio = true;
+    sorteggioDiretto = false;
+  });
+}
+
   Future<void> eliminaPresorteggio() async {
     if (garaSelezionata == null) return;
 
@@ -1496,6 +1542,24 @@ class _SorteggiPageState extends State<SorteggiPage> {
                 height: 24,
               ),
             ],
+                        ExpansionTile(
+              title: const Text(
+                'Presorteggio',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildPresorteggioVisualizzato(),
+                  ),
+                ),
+              ],
+            ),
+
             ElevatedButton(
               onPressed: () async {
                 if (settoreUnico) {
@@ -1722,21 +1786,23 @@ class _SorteggiPageState extends State<SorteggiPage> {
 
                 await aggiornaRiepilogo();
 
-                setState(() {
-                  anteprima = nuovaAnteprima;
+setState(() {
+  anteprima = nuovaAnteprima;
 
-                  presorteggio = dati;
+  presorteggio = dati;
 
-                  settoriDisponibili = listaSettori;
+  settoriDisponibili = listaSettori;
 
-                  lettereDisponibili = listaLettere;
+  lettereDisponibili = listaLettere;
 
-                  settoreTecnicoNumero = tecnicoNumero;
+  settoreTecnicoNumero = tecnicoNumero;
 
-                  settoreTecnicoLettera =
-                      tecnicoNumero != null ? posizioneTecnico : null;
-                });
-              },
+  settoreTecnicoLettera =
+      tecnicoNumero != null ? posizioneTecnico : null;
+
+  modificaPresorteggio = false;
+});              },
+
               child: Text(
                 settoreUnico
                     ? 'Genera Settore Unico'
@@ -1776,23 +1842,6 @@ class _SorteggiPageState extends State<SorteggiPage> {
           if (presorteggio.isNotEmpty && !sorteggioDiretto) ...[
             const SizedBox(
               height: 20,
-            ),
-            ExpansionTile(
-              title: const Text(
-                'Presorteggio',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _buildPresorteggioVisualizzato(),
-                  ),
-                ),
-              ],
             ),
           ],
           if (modificaPresorteggio &&
@@ -1909,10 +1958,11 @@ class _SorteggiPageState extends State<SorteggiPage> {
               ),
             ),
           ],
-          if (presorteggio.isNotEmpty &&
-              !sorteggioPresente &&
-              !sorteggioDiretto) ...[
-            const SizedBox(
+          if (modificaPresorteggio &&
+    presorteggio.isNotEmpty &&
+    !sorteggioPresente &&
+    !sorteggioDiretto) ...[
+                  const SizedBox(
               height: 20,
             ),
             ElevatedButton(
@@ -1935,18 +1985,8 @@ class _SorteggiPageState extends State<SorteggiPage> {
             const SizedBox(
               height: 20,
             ),
-            ElevatedButton.icon(
-              onPressed: eliminaSorteggio,
-              icon: const Icon(Icons.delete),
-              label: const Text('Elimina Sorteggio'),
-            ),
-          ],
-          if (anteprimaSorteggio.isNotEmpty) ...[
-            const SizedBox(
-              height: 20,
-            ),
-            ExpansionTile(
-              initiallyExpanded: true,
+                        ExpansionTile(
+              initiallyExpanded: false,
               title: const Text(
                 'Sorteggio Definitivo',
                 style: TextStyle(
@@ -1983,6 +2023,17 @@ class _SorteggiPageState extends State<SorteggiPage> {
                   ),
                 ),
               ],
+            ),
+
+            ElevatedButton.icon(
+              onPressed: eliminaSorteggio,
+              icon: const Icon(Icons.delete),
+              label: const Text('Elimina Sorteggio'),
+            ),
+          ],
+          if (anteprimaSorteggio.isNotEmpty) ...[
+            const SizedBox(
+              height: 20,
             ),
           ],
         ],
